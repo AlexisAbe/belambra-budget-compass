@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { FileUp, X, Download } from "lucide-react";
 import { validateImportFile, processImportFile } from "@/lib/importUtils";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
+import Papa from "papaparse";
 import { Campaign } from "@/types";
 
 type ImportDataProps = {
@@ -18,15 +18,70 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   
+  const processCSV = (file: File) => {
+    return new Promise<Partial<Campaign>[]>((resolve, reject) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const campaigns: Partial<Campaign>[] = results.data.map((row: any) => {
+            const weeklyBudgets: Record<string, number> = {};
+            const weeklyActuals: Record<string, number> = {};
+            const weeklyBudgetPercentages: Record<string, number> = {};
+            
+            Object.keys(row).forEach(key => {
+              if (key.match(/^S\d+$/)) {
+                const percentage = parseFloat(row[key]) || 0;
+                weeklyBudgetPercentages[key] = percentage;
+                
+                const budget = (percentage / 100) * parseFloat(row.totalBudget || "0");
+                weeklyBudgets[key] = budget;
+                weeklyActuals[key] = 0;
+              }
+            });
+
+            return {
+              id: `imported-${Date.now()}-${Math.random()}`,
+              mediaChannel: row.mediaChannel || "OTHER",
+              campaignName: row.campaignName || "Campagne importée",
+              marketingObjective: row.marketingObjective || "OTHER",
+              targetAudience: row.targetAudience || "Audience générale",
+              startDate: row.startDate || "2025-01-01",
+              totalBudget: parseFloat(row.totalBudget) || 0,
+              durationDays: parseInt(row.durationDays) || 30,
+              status: "ACTIVE" as const,
+              weeklyBudgetPercentages,
+              weeklyBudgets,
+              weeklyActuals
+            };
+          });
+          
+          resolve(campaigns);
+        },
+        error: (error) => {
+          reject(error);
+        }
+      });
+    });
+  };
+  
   const handleImport = async (file: File) => {
     if (!validateImportFile(file)) return;
     
     setIsUploading(true);
     
     try {
-      const importedCampaigns = await processImportFile(file);
+      let importedCampaigns;
       
-      if (importedCampaigns.length === 0) {
+      if (file.name.endsWith('.csv')) {
+        importedCampaigns = await processCSV(file);
+      } else if (file.name.endsWith('.json')) {
+        importedCampaigns = await processImportFile(file);
+      } else {
+        throw new Error("Format de fichier non supporté");
+      }
+      
+      if (!importedCampaigns || importedCampaigns.length === 0) {
         toast.error("Aucune campagne trouvée dans le fichier importé");
         return;
       }
