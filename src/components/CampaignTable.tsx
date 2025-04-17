@@ -5,12 +5,14 @@ import { Campaign } from "@/types";
 import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
-import { PlusCircle } from "lucide-react";
+import { FileUp, PlusCircle } from "lucide-react";
 import CampaignForm from "./CampaignForm";
+import ImportData from "./ImportData";
 
 const CampaignTable = () => {
   const { campaigns, updateWeeklyBudget, updateWeeklyActual, currentWeek } = useCampaigns();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
   const [editingCell, setEditingCell] = useState<{ campaignId: string; week: string; type: 'planned' | 'actual' } | null>(null);
   const [editValue, setEditValue] = useState("");
 
@@ -59,18 +61,34 @@ const CampaignTable = () => {
     <div className="mb-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-800">Campagnes</h2>
-        <Button 
-          onClick={() => setShowAddForm(true)} 
-          className="bg-belambra-blue hover:bg-belambra-darkBlue"
-        >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Ajouter une campagne
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={() => setShowImportForm(true)}
+            variant="outline"
+            className="border-belambra-blue text-belambra-blue hover:bg-belambra-blue/10"
+          >
+            <FileUp className="w-4 h-4 mr-2" />
+            Importer des données
+          </Button>
+          <Button 
+            onClick={() => setShowAddForm(true)} 
+            className="bg-belambra-blue hover:bg-belambra-darkBlue"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Ajouter une campagne
+          </Button>
+        </div>
       </div>
 
       {showAddForm && (
         <div className="mb-6">
           <CampaignForm onCancel={() => setShowAddForm(false)} />
+        </div>
+      )}
+      
+      {showImportForm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+          <ImportData onClose={() => setShowImportForm(false)} />
         </div>
       )}
 

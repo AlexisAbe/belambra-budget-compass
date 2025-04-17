@@ -2,9 +2,11 @@
 import React from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 
 const Header = () => {
-  const { getBudgetSummary, currentWeek } = useCampaigns();
+  const { getBudgetSummary, currentWeek, resetToMockData } = useCampaigns();
   const summary = getBudgetSummary();
   
   const getVarianceColor = (variance: number) => {
@@ -38,8 +40,19 @@ const Header = () => {
             <p className="text-gray-500">Suivi des campagnes digitales 2025</p>
           </div>
         </div>
-        <div className="bg-belambra-lightBlue py-1 px-3 rounded-full text-white text-sm font-medium">
-          Semaine actuelle: {currentWeek}
+        <div className="flex items-center gap-2">
+          <div className="bg-belambra-lightBlue py-1 px-3 rounded-full text-white text-sm font-medium">
+            Semaine actuelle: {currentWeek}
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={resetToMockData}
+            className="text-xs"
+          >
+            <RotateCcw className="w-3 h-3 mr-1" />
+            Réinitialiser
+          </Button>
         </div>
       </div>
 

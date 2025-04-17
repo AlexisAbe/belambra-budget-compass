@@ -58,3 +58,13 @@ export const marketingObjectives = [
   "RETENTION",
   "OTHER"
 ];
+
+// Add custom theme colors that match Belambra's brand
+export const BELAMBRA_COLORS = {
+  blue: "#005F9E",
+  lightBlue: "#0085CA",
+  darkBlue: "#00477A",
+  teal: "#00B2A9",
+  red: "#EC6571",
+  gray: "#8E9196"
+};

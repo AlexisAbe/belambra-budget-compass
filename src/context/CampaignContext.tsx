@@ -16,6 +16,7 @@ interface CampaignContextType {
   getChannelSummaries: () => ChannelSummary[];
   getObjectiveSummaries: () => ObjectiveSummary[];
   currentWeek: string;
+  resetToMockData: () => void;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -28,6 +29,11 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Load initial data
     setCampaigns(getInitialCampaigns());
   }, []);
+
+  const resetToMockData = () => {
+    setCampaigns(getInitialCampaigns());
+    toast.success("Données réinitialisées");
+  };
 
   const addCampaign = (newCampaign: Omit<Campaign, "id" | "weeklyBudgets" | "weeklyActuals">) => {
     const id = Date.now().toString();
@@ -207,7 +213,8 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         getBudgetSummary,
         getChannelSummaries,
         getObjectiveSummaries,
-        currentWeek
+        currentWeek,
+        resetToMockData
       }}
     >
       {children}
