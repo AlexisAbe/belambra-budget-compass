@@ -3,8 +3,9 @@ import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileUp, X } from "lucide-react";
+import { FileUp, X, Download } from "lucide-react";
 import { validateImportFile, processImportFile } from "@/lib/importUtils";
+import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
 
@@ -66,6 +67,11 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       handleImport(file);
     }
   };
+
+  const handleDownloadTemplate = (format: 'csv' | 'json') => {
+    downloadTemplate(format);
+    toast.success(`Modèle ${format.toUpperCase()} téléchargé`);
+  };
   
   return (
     <div className="bg-white rounded-lg shadow-md p-6 max-w-md w-full mx-auto">
@@ -99,20 +105,45 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
             className="hidden"
             id="file-upload"
           />
-          <Button
-            as="label"
-            htmlFor="file-upload"
-            disabled={isUploading}
-            className="cursor-pointer"
-          >
-            Parcourir les fichiers
-          </Button>
+          <label htmlFor="file-upload">
+            <Button 
+              disabled={isUploading}
+              className="cursor-pointer"
+            >
+              Parcourir les fichiers
+            </Button>
+          </label>
         </div>
         
         <div className="text-xs text-gray-500 space-y-1">
           <p>Formats supportés: CSV, JSON</p>
           <p>Taille maximale: 5MB</p>
           <p>Les colonnes doivent inclure: nom de campagne, levier média, objectif, etc.</p>
+        </div>
+
+        <div className="border-t pt-4 mt-4">
+          <h3 className="text-sm font-medium mb-2">Besoin d'un modèle?</h3>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleDownloadTemplate('csv')}
+              className="flex items-center"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Modèle CSV
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleDownloadTemplate('json')}
+              className="flex items-center"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Modèle JSON
+            </Button>
+          </div>
         </div>
         
         <div className="pt-2 flex justify-end gap-2">
