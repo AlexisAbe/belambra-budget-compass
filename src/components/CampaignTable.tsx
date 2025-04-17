@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
@@ -5,7 +6,7 @@ import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter } from "lucide-react";
+import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent } from "lucide-react";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ const CampaignTable = () => {
   const [editingCell, setEditingCell] = useState<{ campaignId: string; week: string; type: 'planned' | 'actual' | 'percentage' } | null>(null);
   const [editValue, setEditValue] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<string>("all");
+  const [displayMode, setDisplayMode] = useState<'amount' | 'percentage'>('amount');
 
   const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
@@ -90,6 +92,10 @@ const CampaignTable = () => {
     selectedChannel === "all" || campaign.mediaChannel === selectedChannel
   );
 
+  const toggleDisplayMode = () => {
+    setDisplayMode(prev => prev === 'amount' ? 'percentage' : 'amount');
+  };
+
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-4">
@@ -114,6 +120,15 @@ const CampaignTable = () => {
               </SelectContent>
             </Select>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleDisplayMode}
+            className="flex items-center gap-1"
+          >
+            <Percent className="w-4 h-4" />
+            {displayMode === 'amount' ? 'Afficher %' : 'Afficher €'}
+          </Button>
         </div>
         <div className="flex space-x-2">
           <Button 
@@ -231,16 +246,61 @@ const CampaignTable = () => {
                     {weeks.map(week => {
                       const plannedValue = campaign.weeklyBudgets[week] || 0;
                       const actualValue = campaign.weeklyActuals[week] || 0;
+                      const percentageValue = campaign.weeklyBudgetPercentages?.[week] || 0;
                       
                       return (
                         <td key={week} className={getCellClassName(week)}>
                           <div className="flex flex-col gap-1">
-                            <div className="p-1 bg-blue-50 rounded">
-                              {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
+                            <div 
+                              className="p-1 bg-blue-50 rounded cursor-pointer hover:bg-blue-100"
+                              onClick={() => {
+                                if (displayMode === 'amount') {
+                                  handleCellClick(campaign.id, week, 'planned', plannedValue);
+                                } else {
+                                  handleCellClick(campaign.id, week, 'percentage', percentageValue);
+                                }
+                              }}
+                            >
+                              {editingCell && 
+                               editingCell.campaignId === campaign.id && 
+                               editingCell.week === week && 
+                               (editingCell.type === 'planned' || editingCell.type === 'percentage') ? (
+                                <input
+                                  type="number"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={handleCellKeyDown}
+                                  autoFocus
+                                  className="w-full text-center outline-none"
+                                />
+                              ) : displayMode === 'amount' ? (
+                                plannedValue > 0 ? formatCurrency(plannedValue) : "-"
+                              ) : (
+                                `${percentageValue > 0 ? percentageValue.toFixed(1) : "0"}%`
+                              )}
                             </div>
                             
-                            <div className="p-1 bg-green-50 rounded">
-                              {actualValue > 0 ? formatCurrency(actualValue) : "-"}
+                            <div 
+                              className="p-1 bg-green-50 rounded cursor-pointer hover:bg-green-100"
+                              onClick={() => handleCellClick(campaign.id, week, 'actual', actualValue)}
+                            >
+                              {editingCell && 
+                               editingCell.campaignId === campaign.id && 
+                               editingCell.week === week && 
+                               editingCell.type === 'actual' ? (
+                                <input
+                                  type="number"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={handleCellKeyDown}
+                                  autoFocus
+                                  className="w-full text-center outline-none"
+                                />
+                              ) : (
+                                actualValue > 0 ? formatCurrency(actualValue) : "-"
+                              )}
                             </div>
                           </div>
                         </td>
@@ -262,7 +322,7 @@ const CampaignTable = () => {
       <div className="mt-2 text-xs text-gray-500">
         <div className="flex flex-wrap gap-4">
           <span>* Cliquez sur une cellule pour modifier le montant</span>
-          <span>* <span className="bg-blue-50 px-1 rounded">Bleu</span>: Budget prévu</span>
+          <span>* <span className="bg-blue-50 px-1 rounded">Bleu</span>: Budget prévu {displayMode === 'percentage' && '(%)' || '(€)'}</span>
           <span>* <span className="bg-green-50 px-1 rounded">Vert</span>: Budget réel</span>
           <span>* Valeurs en <span className="text-red-500">rouge</span>: dépassement</span>
           <span>* Valeurs en <span className="text-green-500">vert</span>: sous-utilisation</span>

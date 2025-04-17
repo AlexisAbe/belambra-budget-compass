@@ -81,12 +81,22 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCampaigns(prev => 
       prev.map(campaign => {
         if (campaign.id === campaignId) {
+          // Update the budget amount
+          const newBudgets = {
+            ...campaign.weeklyBudgets,
+            [week]: amount
+          };
+          
+          // Recalculate the percentage based on the new amount
+          const newPercentages = { ...(campaign.weeklyBudgetPercentages || {}) };
+          if (campaign.totalBudget > 0) {
+            newPercentages[week] = (amount / campaign.totalBudget) * 100;
+          }
+          
           return {
             ...campaign,
-            weeklyBudgets: {
-              ...campaign.weeklyBudgets,
-              [week]: amount
-            }
+            weeklyBudgets: newBudgets,
+            weeklyBudgetPercentages: newPercentages
           };
         }
         return campaign;
