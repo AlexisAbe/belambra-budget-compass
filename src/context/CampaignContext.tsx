@@ -53,6 +53,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {
         ...newCampaign,
         id,
+        status: 'ACTIVE', // Set default status
         weeklyBudgets,
         weeklyActuals,
         weeklyBudgetPercentages

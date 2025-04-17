@@ -1,20 +1,22 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
-import { Campaign } from "@/types";
+import { Campaign, mediaChannels } from "@/types";
 import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle } from "lucide-react";
+import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter } from "lucide-react";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
+import { toast } from "sonner";
 
 const CampaignTable = () => {
-  const { campaigns, updateWeeklyBudget, updateWeeklyActual, updateWeeklyPercentage, currentWeek } = useCampaigns();
+  const { campaigns, updateWeeklyBudget, updateWeeklyActual, updateWeeklyPercentage, updateCampaign, deleteCampaign, currentWeek } = useCampaigns();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
   const [editingCell, setEditingCell] = useState<{ campaignId: string; week: string; type: 'planned' | 'actual' | 'percentage' } | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [selectedChannel, setSelectedChannel] = useState<string>("all");
 
   const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
@@ -59,10 +61,67 @@ const CampaignTable = () => {
     return week === currentWeek ? "data-cell cell-highlight" : "data-cell";
   };
 
+  const getStatusIcon = (status: Campaign['status']) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <Check className="w-4 h-4 text-green-500" />;
+      case 'PAUSED':
+        return <Pause className="w-4 h-4 text-yellow-500" />;
+      case 'DELETED':
+        return <X className="w-4 h-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const handleStatusChange = (campaignId: string, status: Campaign['status']) => {
+    const campaign = campaigns.find(c => c.id === campaignId);
+    if (campaign) {
+      updateCampaign({ ...campaign, status });
+      toast.success(`Statut de la campagne mis à jour: ${status}`);
+    }
+  };
+
+  const deleteCampaign = (id: string) => {
+    setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
+    toast.success("Campagne supprimée");
+  };
+
+  const handleDelete = (campaignId: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) {
+      deleteCampaign(campaignId);
+    }
+  };
+
+  const filteredCampaigns = campaigns.filter(campaign => 
+    selectedChannel === "all" || campaign.mediaChannel === selectedChannel
+  );
+
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Campagnes</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold text-gray-800">Campagnes</h2>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <Select
+              value={selectedChannel}
+              onValueChange={setSelectedChannel}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrer par levier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les leviers</SelectItem>
+                {mediaChannels.map(channel => (
+                  <SelectItem key={channel} value={channel}>
+                    {channel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="flex space-x-2">
           <Button 
             onClick={() => setShowImportForm(true)}
@@ -104,7 +163,8 @@ const CampaignTable = () => {
               <th className="header-cell fixed-cell z-20 left-[480px] min-w-[130px]">Cible</th>
               <th className="header-cell fixed-cell z-20 left-[610px] min-w-[110px]">Début</th>
               <th className="header-cell fixed-cell z-20 left-[720px] min-w-[130px]">Budget Total</th>
-              <th className="header-cell fixed-cell z-20 left-[850px] min-w-[80px]">Jours</th>
+              <th className="header-cell fixed-cell z-20 left-[850px] min-w-[80px]">Statut</th>
+              <th className="header-cell fixed-cell z-20 left-[930px] min-w-[80px]">Actions</th>
               {weeks.map(week => (
                 <th key={week} className={`header-cell min-w-[70px] ${week === currentWeek ? 'bg-belambra-teal' : ''}`}>
                   {week}
@@ -116,129 +176,80 @@ const CampaignTable = () => {
             </tr>
           </thead>
           <tbody>
-            {campaigns.map(campaign => {
+            {filteredCampaigns.map(campaign => {
               const totalPlanned = getTotalBudget(campaign);
               const totalActual = getTotalActual(campaign);
               const variance = totalActual - totalPlanned;
-              const varianceClass = 
-                variance > 0 ? "text-red-600" : 
-                variance < 0 ? "text-green-600" : "";
+              const varianceClass = variance > 0 ? "text-red-600" : variance < 0 ? "text-green-600" : "";
 
-              // First row: percentages
               return (
                 <React.Fragment key={campaign.id}>
                   <tr>
                     <td className="fixed-cell border-r left-0 bg-gray-100">{campaign.mediaChannel}</td>
                     <td className="fixed-cell border-r left-[160px] bg-gray-100">{campaign.campaignName}</td>
-                    <td className="fixed-cell border-r left-[340px] bg-gray-100 text-center font-medium" colSpan={5}>
-                      Pourcentage (%)
-                    </td>
-                    
-                    {weeks.map(week => {
-                      const percentValue = campaign.weeklyBudgetPercentages?.[week] || 0;
-                      
-                      // Determine if this cell is currently being edited
-                      const isEditingPercent = editingCell?.campaignId === campaign.id && 
-                                            editingCell?.week === week && 
-                                            editingCell?.type === 'percentage';
-                      
-                      return (
-                        <td key={`${week}-percent`} className={`${getCellClassName(week)} bg-gray-100`}>
-                          {isEditingPercent ? (
-                            <input
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellBlur}
-                              onKeyDown={handleCellKeyDown}
-                              className="cell-input"
-                              autoFocus
-                            />
-                          ) : (
-                            <div 
-                              onClick={() => handleCellClick(campaign.id, week, 'percentage', percentValue)}
-                              className="cursor-pointer text-center"
-                            >
-                              {percentValue > 0 ? `${percentValue}%` : "-"}
+                    <td className="fixed-cell border-r left-[340px] bg-gray-100">{campaign.marketingObjective}</td>
+                    <td className="fixed-cell border-r left-[480px] bg-gray-100 text-xs">{campaign.targetAudience}</td>
+                    <td className="fixed-cell border-r left-[610px] bg-gray-100">{campaign.startDate}</td>
+                    <td className="fixed-cell border-r left-[720px] bg-gray-100 text-right">{formatCurrency(campaign.totalBudget)}</td>
+                    <td className="fixed-cell border-r left-[850px] bg-gray-100">
+                      <Select
+                        value={campaign.status}
+                        onValueChange={(value: Campaign['status']) => handleStatusChange(campaign.id, value)}
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(campaign.status)}
+                            <span>{campaign.status}</span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">
+                            <div className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500" />
+                              ACTIVE
                             </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                    
-                    <td className="data-cell bg-gray-100 text-center">100%</td>
-                    <td className="data-cell bg-gray-100"></td>
-                    <td className="data-cell bg-gray-100"></td>
-                  </tr>
-
-                  {/* Second row: budget values */}
-                  <tr>
-                    <td className="fixed-cell border-r left-0"></td>
-                    <td className="fixed-cell border-r left-[160px]"></td>
-                    <td className="fixed-cell border-r left-[340px]">{campaign.marketingObjective}</td>
-                    <td className="fixed-cell border-r left-[480px] text-xs">{campaign.targetAudience}</td>
-                    <td className="fixed-cell border-r left-[610px]">{campaign.startDate}</td>
-                    <td className="fixed-cell border-r left-[720px] text-right">{formatCurrency(campaign.totalBudget)}</td>
-                    <td className="fixed-cell border-r left-[850px] text-center">{campaign.durationDays}</td>
+                          </SelectItem>
+                          <SelectItem value="PAUSED">
+                            <div className="flex items-center gap-2">
+                              <Pause className="w-4 h-4 text-yellow-500" />
+                              PAUSED
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="DELETED">
+                            <div className="flex items-center gap-2">
+                              <X className="w-4 h-4 text-red-500" />
+                              DELETED
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="fixed-cell border-r left-[930px] bg-gray-100">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(campaign.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </td>
                     
                     {weeks.map(week => {
                       const plannedValue = campaign.weeklyBudgets[week] || 0;
                       const actualValue = campaign.weeklyActuals[week] || 0;
-                      
-                      // Determine if this cell is currently being edited
-                      const isEditingPlanned = editingCell?.campaignId === campaign.id && 
-                                              editingCell?.week === week && 
-                                              editingCell?.type === 'planned';
-                      
-                      const isEditingActual = editingCell?.campaignId === campaign.id && 
-                                            editingCell?.week === week && 
-                                            editingCell?.type === 'actual';
                       
                       return (
                         <td key={week} className={getCellClassName(week)}>
                           <div className="flex flex-col gap-1">
                             {/* Planned value */}
                             <div className="p-1 bg-blue-50 rounded">
-                              {isEditingPlanned ? (
-                                <input
-                                  type="text"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={handleCellBlur}
-                                  onKeyDown={handleCellKeyDown}
-                                  className="cell-input w-full"
-                                  autoFocus
-                                />
-                              ) : (
-                                <div 
-                                  onClick={() => handleCellClick(campaign.id, week, 'planned', plannedValue)}
-                                  className="cursor-pointer text-xs text-center"
-                                >
-                                  {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
-                                </div>
-                              )}
+                              {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
                             </div>
                             
                             {/* Actual value */}
                             <div className="p-1 bg-green-50 rounded">
-                              {isEditingActual ? (
-                                <input
-                                  type="text"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={handleCellBlur}
-                                  onKeyDown={handleCellKeyDown}
-                                  className="cell-input w-full"
-                                  autoFocus
-                                />
-                              ) : (
-                                <div 
-                                  onClick={() => handleCellClick(campaign.id, week, 'actual', actualValue)}
-                                  className={`cursor-pointer text-xs text-center ${actualValue > plannedValue ? 'text-red-500' : actualValue < plannedValue ? 'text-green-500' : ''}`}
-                                >
-                                  {actualValue > 0 ? formatCurrency(actualValue) : "-"}
-                                </div>
-                              )}
+                              {actualValue > 0 ? formatCurrency(actualValue) : "-"}
                             </div>
                           </div>
                         </td>
