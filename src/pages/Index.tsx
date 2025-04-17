@@ -1,46 +1,57 @@
 
 import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CampaignProvider } from "@/context/CampaignContext";
-import Header from "@/components/Header";
-import Dashboard from "@/components/Dashboard";
-import CampaignTable from "@/components/CampaignTable";
-import { ChartBarIcon, TableIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import MainNav from "@/components/MainNav";
 
 const Index = () => {
   return (
-    <CampaignProvider>
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <Header />
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="bg-belambra-blue p-2 rounded-lg">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="w-6 h-6 text-white"
+              >
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-belambra-blue">Belambra Budget Compass</h1>
+              <p className="text-gray-500">Suivi des campagnes digitales 2025</p>
+            </div>
+          </div>
+          <MainNav />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <Link 
+            to="/clients"
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+          >
+            <h2 className="text-xl font-semibold mb-2">Gestion des Clients</h2>
+            <p className="text-gray-600">Accédez à la liste des clients et gérez leurs informations</p>
+          </Link>
           
-          <Tabs defaultValue="dashboard">
-            <TabsList className="mb-6">
-              <TabsTrigger value="dashboard" className="flex items-center">
-                <ChartBarIcon className="w-4 h-4 mr-2" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="campaigns" className="flex items-center">
-                <TableIcon className="w-4 h-4 mr-2" />
-                Tableau des Campagnes
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="dashboard">
-              <Dashboard />
-            </TabsContent>
-            
-            <TabsContent value="campaigns">
-              <CampaignTable />
-            </TabsContent>
-          </Tabs>
-          
-          <footer className="mt-8 text-center text-gray-500 text-sm">
-            <p>Belambra Budget Compass © 2025 - Suivi de budget média</p>
-          </footer>
+          <Link 
+            to="/campaigns"
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+          >
+            <h2 className="text-xl font-semibold mb-2">Gestion des Campagnes</h2>
+            <p className="text-gray-600">Suivez et gérez vos campagnes marketing</p>
+          </Link>
         </div>
       </div>
-    </CampaignProvider>
+    </div>
   );
 };
 
