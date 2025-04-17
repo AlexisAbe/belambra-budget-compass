@@ -1,3 +1,4 @@
+
 export interface Campaign {
   id: string;
   mediaChannel: string;
@@ -7,7 +8,8 @@ export interface Campaign {
   startDate: string;
   totalBudget: number;
   durationDays: number;
-  weeklyBudgetPercentages?: Record<string, number>; // New field for percentage allocation
+  status: CampaignStatus;
+  weeklyBudgetPercentages?: Record<string, number>; // Field for percentage allocation
   weeklyBudgets: Record<string, number>;
   weeklyActuals: Record<string, number>;
 }
@@ -68,19 +70,5 @@ export const BELAMBRA_COLORS = {
   red: "#EC6571",
   gray: "#8E9196"
 };
-export type CampaignStatus = 'ACTIVE' | 'PAUSED' | 'DELETED';
 
-export interface Campaign {
-  id: string;
-  mediaChannel: string;
-  campaignName: string;
-  marketingObjective: string;
-  targetAudience: string;
-  startDate: string;
-  totalBudget: number;
-  durationDays: number;
-  status: CampaignStatus;
-  weeklyBudgetPercentages?: Record<string, number>;
-  weeklyBudgets: Record<string, number>;
-  weeklyActuals: Record<string, number>;
-}
+export type CampaignStatus = 'ACTIVE' | 'PAUSED' | 'DELETED';

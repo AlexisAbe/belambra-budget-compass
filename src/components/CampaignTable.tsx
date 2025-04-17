@@ -47,12 +47,10 @@ const CampaignTable = () => {
     }
   };
 
-  // Helper to get total budget for a campaign
   const getTotalBudget = (campaign: Campaign) => {
     return Object.values(campaign.weeklyBudgets).reduce((sum, value) => sum + value, 0);
   };
 
-  // Helper to get total actual spend for a campaign
   const getTotalActual = (campaign: Campaign) => {
     return Object.values(campaign.weeklyActuals).reduce((sum, value) => sum + value, 0);
   };
@@ -80,11 +78,6 @@ const CampaignTable = () => {
       updateCampaign({ ...campaign, status });
       toast.success(`Statut de la campagne mis à jour: ${status}`);
     }
-  };
-
-  const deleteCampaign = (id: string) => {
-    setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
-    toast.success("Campagne supprimée");
   };
 
   const handleDelete = (campaignId: string) => {
@@ -242,12 +235,10 @@ const CampaignTable = () => {
                       return (
                         <td key={week} className={getCellClassName(week)}>
                           <div className="flex flex-col gap-1">
-                            {/* Planned value */}
                             <div className="p-1 bg-blue-50 rounded">
                               {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
                             </div>
                             
-                            {/* Actual value */}
                             <div className="p-1 bg-green-50 rounded">
                               {actualValue > 0 ? formatCurrency(actualValue) : "-"}
                             </div>
@@ -256,7 +247,6 @@ const CampaignTable = () => {
                       );
                     })}
                     
-                    {/* Totals and variance */}
                     <td className="data-cell font-semibold">{formatCurrency(totalPlanned)}</td>
                     <td className="data-cell font-semibold">{formatCurrency(totalActual)}</td>
                     <td className={`data-cell font-semibold ${varianceClass}`}>

@@ -65,6 +65,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-01-15",
     totalBudget: 120000,
     durationDays: 90,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(120000, 3, 13),
     weeklyActuals: {} // Will be generated later
   },
@@ -77,6 +78,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-01-05",
     totalBudget: 85000,
     durationDays: 70,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(85000, 1, 10),
     weeklyActuals: {} // Will be generated later
   },
@@ -89,6 +91,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-03-01",
     totalBudget: 150000,
     durationDays: 60,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(150000, 9, 9),
     weeklyActuals: {} // Will be generated later
   },
@@ -101,6 +104,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-04-15",
     totalBudget: 65000,
     durationDays: 120,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(65000, 16, 17),
     weeklyActuals: {} // Will be generated later
   },
@@ -113,6 +117,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-03-20",
     totalBudget: 45000,
     durationDays: 15,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(45000, 12, 2),
     weeklyActuals: {} // Will be generated later
   },
@@ -125,6 +130,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-01-10",
     totalBudget: 95000,
     durationDays: 60,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(95000, 2, 9),
     weeklyActuals: {} // Will be generated later
   },
@@ -137,6 +143,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-02-01",
     totalBudget: 15000,
     durationDays: 7,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(15000, 5, 1),
     weeklyActuals: {} // Will be generated later
   },
@@ -149,6 +156,7 @@ export const mockCampaigns: Campaign[] = [
     startDate: "2025-05-10",
     totalBudget: 70000,
     durationDays: 45,
+    status: 'ACTIVE',
     weeklyBudgets: generateWeeklyBudgets(70000, 19, 7),
     weeklyActuals: {} // Will be generated later
   }

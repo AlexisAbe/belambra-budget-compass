@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useCampaigns } from "@/context/CampaignContext";
-import { mediaChannels, marketingObjectives } from "@/types";
+import { mediaChannels, marketingObjectives, CampaignStatus } from "@/types";
 import {
   Form,
   FormControl,
@@ -33,6 +33,7 @@ const formSchema = z.object({
   startDate: z.string().min(1, "La date de début est requise"),
   totalBudget: z.string().transform((val) => Number(val)),
   durationDays: z.string().transform((val) => Number(val)),
+  status: z.string().default("ACTIVE"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,6 +57,7 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
       startDate: campaign?.startDate || "",
       totalBudget: campaign?.totalBudget?.toString() || "",
       durationDays: campaign?.durationDays?.toString() || "",
+      status: campaign?.status || "ACTIVE",
     },
   });
 
@@ -74,6 +76,7 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
         startDate: values.startDate,
         totalBudget: values.totalBudget,
         durationDays: values.durationDays,
+        status: values.status as CampaignStatus,
       });
     }
     onCancel();
