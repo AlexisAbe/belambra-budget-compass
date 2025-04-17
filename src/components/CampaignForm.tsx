@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,16 +23,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  RadioGroup,
+  RadioGroupItem
+} from "@/components/ui/radio-group";
 
-// Define the form schema
 const formSchema = z.object({
   mediaChannel: z.string().min(1, "Le levier média est requis"),
   campaignName: z.string().min(1, "Le nom de la campagne est requis"),
   marketingObjective: z.string().min(1, "L'objectif marketing est requis"),
   targetAudience: z.string().min(1, "La cible est requise"),
   startDate: z.string().min(1, "La date de début est requise"),
+  durationMode: z.enum(["days", "endDate"]),
+  durationDays: z.string().optional(),
+  endDate: z.string().optional(),
   totalBudget: z.string().transform((val) => Number(val)),
-  durationDays: z.string().transform((val) => Number(val)),
   status: z.string().default("ACTIVE"),
 });
 
@@ -40,12 +45,20 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface CampaignFormProps {
   onCancel: () => void;
-  campaign?: any; // Optional campaign for editing
+  campaign?: any;
 }
 
 const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
   const { addCampaign, updateCampaign } = useCampaigns();
   const isEditing = !!campaign;
+  const [durationMode, setDurationMode] = useState(campaign?.durationMode || "days");
+
+  const calculateDurationDays = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -55,17 +68,24 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
       marketingObjective: campaign?.marketingObjective || "",
       targetAudience: campaign?.targetAudience || "",
       startDate: campaign?.startDate || "",
-      totalBudget: campaign?.totalBudget?.toString() || "",
+      durationMode: campaign?.durationMode || "days",
       durationDays: campaign?.durationDays?.toString() || "",
+      endDate: campaign?.endDate || "",
+      totalBudget: campaign?.totalBudget?.toString() || "",
       status: campaign?.status || "ACTIVE",
     },
   });
 
   const onSubmit = (values: FormValues) => {
+    const finalDurationDays = values.durationMode === "days" 
+      ? parseInt(values.durationDays || "0") 
+      : calculateDurationDays(values.startDate, values.endDate || values.startDate);
+
     if (isEditing) {
       updateCampaign({
         ...campaign,
         ...values,
+        durationDays: finalDurationDays,
       });
     } else {
       addCampaign({
@@ -74,8 +94,10 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
         marketingObjective: values.marketingObjective,
         targetAudience: values.targetAudience,
         startDate: values.startDate,
+        durationMode: values.durationMode,
+        durationDays: finalDurationDays,
+        endDate: values.endDate,
         totalBudget: values.totalBudget,
-        durationDays: values.durationDays,
         status: values.status as CampaignStatus,
       });
     }
@@ -188,6 +210,78 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
 
               <FormField
                 control={form.control}
+                name="durationMode"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Mode de durée</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setDurationMode(value);
+                        }}
+                        defaultValue={field.value}
+                        className="flex flex-col space-y-1"
+                      >
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="days" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Nombre de jours
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="endDate" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            Date de fin
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {durationMode === "days" ? (
+                <FormField
+                  control={form.control}
+                  name="durationDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Durée (jours)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Ex: 30"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date de Fin</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
                 name="totalBudget"
                 render={({ field }) => (
                   <FormItem>
@@ -196,24 +290,6 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
                       <Input
                         type="number"
                         placeholder="Ex: 50000"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="durationDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Durée (jours)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Ex: 30"
                         {...field}
                       />
                     </FormControl>
