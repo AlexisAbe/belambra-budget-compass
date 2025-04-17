@@ -1,13 +1,46 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CampaignProvider } from "@/context/CampaignContext";
+import Header from "@/components/Header";
+import Dashboard from "@/components/Dashboard";
+import CampaignTable from "@/components/CampaignTable";
+import { ChartBarIcon, TableIcon } from "lucide-react";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <CampaignProvider>
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          <Header />
+          
+          <Tabs defaultValue="dashboard">
+            <TabsList className="mb-6">
+              <TabsTrigger value="dashboard" className="flex items-center">
+                <ChartBarIcon className="w-4 h-4 mr-2" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="campaigns" className="flex items-center">
+                <TableIcon className="w-4 h-4 mr-2" />
+                Tableau des Campagnes
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="dashboard">
+              <Dashboard />
+            </TabsContent>
+            
+            <TabsContent value="campaigns">
+              <CampaignTable />
+            </TabsContent>
+          </Tabs>
+          
+          <footer className="mt-8 text-center text-gray-500 text-sm">
+            <p>Belambra Budget Compass © 2025 - Suivi de budget média</p>
+          </footer>
+        </div>
       </div>
-    </div>
+    </CampaignProvider>
   );
 };
 
