@@ -119,6 +119,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           <p>Formats supportés: CSV, JSON</p>
           <p>Taille maximale: 5MB</p>
           <p>Les colonnes doivent inclure: nom de campagne, levier média, objectif, etc.</p>
+          <p>Les colonnes S1-S52 représentent la <strong>ventilation en pourcentage (%)</strong> du budget total</p>
         </div>
 
         <div className="border-t pt-4 mt-4">

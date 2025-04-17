@@ -17,13 +17,13 @@ export function generateCsvTemplate(): string {
     "Durée (jours)"
   ];
   
-  // Add week columns (S1-S52)
-  const weekColumns = weeks.map(week => week);
+  // Add week columns (S1-S52) for percentage allocation
+  const weekColumns = weeks.map(week => `${week} (%)`);
   
   // Combine all header columns
   const headerRow = [...basicColumns, ...weekColumns].join(',');
   
-  // Generate 1-2 example rows
+  // Generate example rows with percentage allocation
   const exampleRows = [
     [
       "META",
@@ -32,7 +32,18 @@ export function generateCsvTemplate(): string {
       "Familles avec enfants",
       "2025-04-01",
       "85000",
-      "90"
+      "90",
+      // Add percentage values for a few weeks
+      ...weeks.map(week => {
+        // Just for the example, allocate some percentages to the first few weeks
+        if (week === "S14") return "10";
+        if (week === "S15") return "15";
+        if (week === "S16") return "20";
+        if (week === "S17") return "25";
+        if (week === "S18") return "20";
+        if (week === "S19") return "10";
+        return "0";
+      })
     ].join(','),
     [
       "GOOGLE",
@@ -41,7 +52,16 @@ export function generateCsvTemplate(): string {
       "CSP+ 35-55 ans",
       "2025-01-15",
       "50000",
-      "60"
+      "60",
+      // Add percentage values for a few weeks
+      ...weeks.map(week => {
+        // Just for the example, allocate some percentages to the first few weeks
+        if (week === "S3") return "20";
+        if (week === "S4") return "30";
+        if (week === "S5") return "30";
+        if (week === "S6") return "20";
+        return "0";
+      })
     ].join(',')
   ];
   
@@ -53,22 +73,35 @@ export function generateCsvTemplate(): string {
  * Generates a JSON template for campaign data import
  */
 export function generateJsonTemplate(): string {
-  // Create empty weekly budgets object
-  const weeklyBudgets: Record<string, number> = {};
+  // Create empty weekly budgets percentages object
+  const weeklyBudgetPercentages: Record<string, number> = {};
   const weeklyActuals: Record<string, number> = {};
   
   // Initialize with zeros
   weeks.forEach(week => {
-    weeklyBudgets[week] = 0;
+    weeklyBudgetPercentages[week] = 0;
     weeklyActuals[week] = 0;
   });
   
-  // Set some example values
-  weeklyBudgets.S1 = 5000;
-  weeklyBudgets.S2 = 7500;
-  weeklyBudgets.S3 = 10000;
+  // Set some example percentage values that add up to 100%
+  weeklyBudgetPercentages.S14 = 10;
+  weeklyBudgetPercentages.S15 = 15;
+  weeklyBudgetPercentages.S16 = 20;
+  weeklyBudgetPercentages.S17 = 25;
+  weeklyBudgetPercentages.S18 = 20;
+  weeklyBudgetPercentages.S19 = 10;
   
-  // Example campaign data
+  // Second example for another campaign
+  const secondCampaignPercentages = { ...weeklyBudgetPercentages };
+  Object.keys(secondCampaignPercentages).forEach(key => {
+    secondCampaignPercentages[key] = 0;
+  });
+  secondCampaignPercentages.S3 = 20;
+  secondCampaignPercentages.S4 = 30;
+  secondCampaignPercentages.S5 = 30;
+  secondCampaignPercentages.S6 = 20;
+  
+  // Example campaign data with percentages
   const exampleCampaigns: Partial<Campaign>[] = [
     {
       mediaChannel: "META",
@@ -78,7 +111,8 @@ export function generateJsonTemplate(): string {
       startDate: "2025-04-01",
       totalBudget: 85000,
       durationDays: 90,
-      weeklyBudgets,
+      weeklyBudgetPercentages: weeklyBudgetPercentages,
+      weeklyBudgets: {}, // This will be calculated based on percentages
       weeklyActuals
     },
     {
@@ -89,7 +123,8 @@ export function generateJsonTemplate(): string {
       startDate: "2025-01-15",
       totalBudget: 50000,
       durationDays: 60,
-      weeklyBudgets: { ...weeklyBudgets },
+      weeklyBudgetPercentages: secondCampaignPercentages,
+      weeklyBudgets: {}, // This will be calculated based on percentages
       weeklyActuals: { ...weeklyActuals }
     }
   ];

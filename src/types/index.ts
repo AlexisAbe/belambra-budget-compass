@@ -8,6 +8,7 @@ export interface Campaign {
   startDate: string;
   totalBudget: number;
   durationDays: number;
+  weeklyBudgetPercentages?: Record<string, number>; // New field for percentage allocation
   weeklyBudgets: Record<string, number>;
   weeklyActuals: Record<string, number>;
 }
