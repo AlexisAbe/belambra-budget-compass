@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
@@ -247,24 +246,43 @@ const CampaignTable = () => {
                       const plannedValue = campaign.weeklyBudgets[week] || 0;
                       const actualValue = campaign.weeklyActuals[week] || 0;
                       const percentageValue = campaign.weeklyBudgetPercentages?.[week] || 0;
+                      const variance = actualValue - plannedValue;
                       
                       return (
                         <td key={week} className={getCellClassName(week)}>
-                          <div className="flex flex-col gap-1">
+                          <div className="flex flex-col gap-1 p-1">
+                            {displayMode === 'percentage' && (
+                              <div 
+                                className="text-xs text-gray-500 p-1 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleCellClick(campaign.id, week, 'percentage', percentageValue)}
+                              >
+                                {editingCell && 
+                                 editingCell.campaignId === campaign.id && 
+                                 editingCell.week === week && 
+                                 editingCell.type === 'percentage' ? (
+                                  <input
+                                    type="number"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onBlur={handleCellBlur}
+                                    onKeyDown={handleCellKeyDown}
+                                    autoFocus
+                                    className="w-full text-center outline-none"
+                                  />
+                                ) : (
+                                  `${percentageValue > 0 ? percentageValue.toFixed(1) : "0"}%`
+                                )}
+                              </div>
+                            )}
+                            
                             <div 
                               className="p-1 bg-blue-50 rounded cursor-pointer hover:bg-blue-100"
-                              onClick={() => {
-                                if (displayMode === 'amount') {
-                                  handleCellClick(campaign.id, week, 'planned', plannedValue);
-                                } else {
-                                  handleCellClick(campaign.id, week, 'percentage', percentageValue);
-                                }
-                              }}
+                              onClick={() => handleCellClick(campaign.id, week, 'planned', plannedValue)}
                             >
                               {editingCell && 
                                editingCell.campaignId === campaign.id && 
                                editingCell.week === week && 
-                               (editingCell.type === 'planned' || editingCell.type === 'percentage') ? (
+                               editingCell.type === 'planned' ? (
                                 <input
                                   type="number"
                                   value={editValue}
@@ -274,10 +292,11 @@ const CampaignTable = () => {
                                   autoFocus
                                   className="w-full text-center outline-none"
                                 />
-                              ) : displayMode === 'amount' ? (
-                                plannedValue > 0 ? formatCurrency(plannedValue) : "-"
                               ) : (
-                                `${percentageValue > 0 ? percentageValue.toFixed(1) : "0"}%`
+                                <div>
+                                  <div className="text-xs text-gray-500">Prévu</div>
+                                  <div>{plannedValue > 0 ? formatCurrency(plannedValue) : "-"}</div>
+                                </div>
                               )}
                             </div>
                             
@@ -299,7 +318,12 @@ const CampaignTable = () => {
                                   className="w-full text-center outline-none"
                                 />
                               ) : (
-                                actualValue > 0 ? formatCurrency(actualValue) : "-"
+                                <div>
+                                  <div className="text-xs text-gray-500">Réel</div>
+                                  <div className={variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : ''}>
+                                    {actualValue > 0 ? formatCurrency(actualValue) : "-"}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </div>
