@@ -142,12 +142,9 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             [week]: percentage
           };
           
-          // Recalculate budget amounts based on percentages
+          // Recalculate budget amounts based on the new percentage
           const newBudgets = { ...campaign.weeklyBudgets };
-          
-          Object.entries(newPercentages).forEach(([weekKey, percentValue]) => {
-            newBudgets[weekKey] = (percentValue / 100) * campaign.totalBudget;
-          });
+          newBudgets[week] = (percentage / 100) * campaign.totalBudget;
           
           return {
             ...campaign,
