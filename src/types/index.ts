@@ -1,4 +1,3 @@
-
 export interface Campaign {
   id: string;
   mediaChannel: string;
@@ -12,6 +11,8 @@ export interface Campaign {
   weeklyBudgetPercentages?: Record<string, number>; // Field for percentage allocation
   weeklyBudgets: Record<string, number>;
   weeklyActuals: Record<string, number>;
+  durationMode?: 'days' | 'endDate'; // Add this property to support both duration modes
+  endDate?: string; // Add this to support end date mode
 }
 
 export interface WeeklyData {

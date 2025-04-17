@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -86,6 +85,7 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
         ...campaign,
         ...values,
         durationDays: finalDurationDays,
+        endDate: values.durationMode === "endDate" ? values.endDate : undefined,
       });
     } else {
       addCampaign({
@@ -96,7 +96,7 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
         startDate: values.startDate,
         durationMode: values.durationMode,
         durationDays: finalDurationDays,
-        endDate: values.endDate,
+        endDate: values.durationMode === "endDate" ? values.endDate : undefined,
         totalBudget: values.totalBudget,
         status: values.status as CampaignStatus,
       });
