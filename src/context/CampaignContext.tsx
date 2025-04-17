@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { Campaign, BudgetSummary, ChannelSummary, ObjectiveSummary } from "@/types";
 import { getInitialCampaigns, weeks } from "@/services/mockData";
@@ -12,6 +11,7 @@ interface CampaignContextType {
   deleteCampaign: (id: string) => void;
   updateWeeklyBudget: (campaignId: string, week: string, amount: number) => void;
   updateWeeklyActual: (campaignId: string, week: string, amount: number) => void;
+  updateWeeklyPercentage: (campaignId: string, week: string, percentage: number) => void;
   getBudgetSummary: () => BudgetSummary;
   getChannelSummaries: () => ChannelSummary[];
   getObjectiveSummaries: () => ObjectiveSummary[];
@@ -39,11 +39,13 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const id = Date.now().toString();
     const weeklyBudgets: Record<string, number> = {};
     const weeklyActuals: Record<string, number> = {};
+    const weeklyBudgetPercentages: Record<string, number> = {};
     
     // Initialize all weeks with zero budget
     weeks.forEach(week => {
       weeklyBudgets[week] = 0;
       weeklyActuals[week] = 0;
+      weeklyBudgetPercentages[week] = 0;
     });
     
     setCampaigns(prev => [
@@ -52,7 +54,8 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ...newCampaign,
         id,
         weeklyBudgets,
-        weeklyActuals
+        weeklyActuals,
+        weeklyBudgetPercentages
       }
     ]);
     
@@ -100,6 +103,45 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               ...campaign.weeklyActuals,
               [week]: amount
             }
+          };
+        }
+        return campaign;
+      })
+    );
+  };
+
+  const updateWeeklyPercentage = (campaignId: string, week: string, percentage: number) => {
+    setCampaigns(prev => 
+      prev.map(campaign => {
+        if (campaign.id === campaignId) {
+          // Calculate total budget excluding current week
+          const otherWeeksTotal = Object.entries(campaign.weeklyBudgetPercentages || {})
+            .filter(([weekKey]) => weekKey !== week)
+            .reduce((sum, [, val]) => sum + val, 0);
+          
+          // Check if adding this percentage would exceed 100%
+          if (otherWeeksTotal + percentage > 100) {
+            toast.error("Le total des pourcentages ne peut pas dépasser 100%");
+            return campaign;
+          }
+          
+          // Update the percentage
+          const newPercentages = {
+            ...(campaign.weeklyBudgetPercentages || {}),
+            [week]: percentage
+          };
+          
+          // Recalculate budget amounts based on percentages
+          const newBudgets = { ...campaign.weeklyBudgets };
+          
+          Object.entries(newPercentages).forEach(([weekKey, percentValue]) => {
+            newBudgets[weekKey] = (percentValue / 100) * campaign.totalBudget;
+          });
+          
+          return {
+            ...campaign,
+            weeklyBudgetPercentages: newPercentages,
+            weeklyBudgets: newBudgets
           };
         }
         return campaign;
@@ -210,6 +252,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteCampaign,
         updateWeeklyBudget,
         updateWeeklyActual,
+        updateWeeklyPercentage,
         getBudgetSummary,
         getChannelSummaries,
         getObjectiveSummaries,

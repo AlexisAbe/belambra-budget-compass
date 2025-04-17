@@ -39,10 +39,10 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
   const totalBudgetIndex = headers.findIndex(h => h.toLowerCase().includes('budget') && h.toLowerCase().includes('total'));
   const durationIndex = headers.findIndex(h => h.toLowerCase().includes('durée') || h.toLowerCase().includes('duration') || h.toLowerCase().includes('jours'));
   
-  // Find week columns (S1, S2, etc.)
+  // Find week columns (S1, S2, etc.) - now looking for percentage indicators
   const weekIndices: Record<string, number> = {};
   weeks.forEach(week => {
-    const index = headers.findIndex(h => h.toLowerCase() === week.toLowerCase());
+    const index = headers.findIndex(h => h.toLowerCase().includes(week.toLowerCase()) && h.toLowerCase().includes('%'));
     if (index !== -1) {
       weekIndices[week] = index;
     }
@@ -56,17 +56,26 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
     
     const columns = rows[i].split(',').map(col => col.trim());
     
-    // Initialize weekly budgets and actuals
+    // Initialize data structures
+    const weeklyBudgetPercentages: Record<string, number> = {};
     const weeklyBudgets: Record<string, number> = {};
     const weeklyActuals: Record<string, number> = {};
     
-    // Get weekly values
+    // Extract total budget
+    const totalBudget = totalBudgetIndex >= 0 ? 
+      Number(columns[totalBudgetIndex].replace(/[^\d.-]/g, '')) || 0 : 0;
+    
+    // Get weekly percentage values
     Object.entries(weekIndices).forEach(([week, index]) => {
       if (index < columns.length && columns[index]) {
-        // For now, we assume all values are budgets
-        // Later we could improve to detect which are actuals vs planned
-        weeklyBudgets[week] = Number(columns[index].replace(/[^\d.-]/g, '')) || 0;
+        // Extract percentage (remove % sign if present)
+        const percentValue = Number(columns[index].replace(/[%\s]/g, '')) || 0;
+        weeklyBudgetPercentages[week] = percentValue;
+        
+        // Calculate absolute budget value based on percentage
+        weeklyBudgets[week] = (percentValue / 100) * totalBudget;
       } else {
+        weeklyBudgetPercentages[week] = 0;
         weeklyBudgets[week] = 0;
       }
       weeklyActuals[week] = 0; // Initialize actuals as 0
@@ -80,8 +89,9 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
       marketingObjective: objectiveIndex >= 0 ? columns[objectiveIndex] : "OTHER",
       targetAudience: audienceIndex >= 0 ? columns[audienceIndex] : "Audience générale",
       startDate: startDateIndex >= 0 ? columns[startDateIndex] : "2025-01-01",
-      totalBudget: totalBudgetIndex >= 0 ? Number(columns[totalBudgetIndex].replace(/[^\d.-]/g, '')) || 0 : 0,
+      totalBudget,
       durationDays: durationIndex >= 0 ? Number(columns[durationIndex]) || 30 : 30,
+      weeklyBudgetPercentages,
       weeklyBudgets,
       weeklyActuals
     };
@@ -115,7 +125,26 @@ export function processImportFile(file: File): Promise<Partial<Campaign>[]> {
         } 
         // Handle JSON data
         else if (file.name.endsWith('.json')) {
-          const campaigns = JSON.parse(fileContent);
+          let campaigns = JSON.parse(fileContent);
+          
+          // Process each campaign to ensure weekly budgets are calculated from percentages
+          campaigns = campaigns.map((campaign: Partial<Campaign>) => {
+            if (campaign.weeklyBudgetPercentages && campaign.totalBudget) {
+              const weeklyBudgets: Record<string, number> = {};
+              
+              Object.entries(campaign.weeklyBudgetPercentages).forEach(([week, percentage]) => {
+                weeklyBudgets[week] = (percentage / 100) * (campaign.totalBudget || 0);
+              });
+              
+              return {
+                ...campaign,
+                weeklyBudgets,
+                weeklyActuals: campaign.weeklyActuals || {}
+              };
+            }
+            return campaign;
+          });
+          
           resolve(campaigns);
         }
         // Handle Excel files - for now just show a message that we'd need a library

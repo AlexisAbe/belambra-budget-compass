@@ -10,13 +10,13 @@ import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 
 const CampaignTable = () => {
-  const { campaigns, updateWeeklyBudget, updateWeeklyActual, currentWeek } = useCampaigns();
+  const { campaigns, updateWeeklyBudget, updateWeeklyActual, updateWeeklyPercentage, currentWeek } = useCampaigns();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
-  const [editingCell, setEditingCell] = useState<{ campaignId: string; week: string; type: 'planned' | 'actual' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ campaignId: string; week: string; type: 'planned' | 'actual' | 'percentage' } | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual', currentValue: number) => {
+  const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
     setEditValue(currentValue.toString());
   };
@@ -27,8 +27,10 @@ const CampaignTable = () => {
       if (!isNaN(value)) {
         if (editingCell.type === 'planned') {
           updateWeeklyBudget(editingCell.campaignId, editingCell.week, value);
-        } else {
+        } else if (editingCell.type === 'actual') {
           updateWeeklyActual(editingCell.campaignId, editingCell.week, value);
+        } else if (editingCell.type === 'percentage') {
+          updateWeeklyPercentage(editingCell.campaignId, editingCell.week, value);
         }
       }
       setEditingCell(null);
@@ -122,97 +124,148 @@ const CampaignTable = () => {
                 variance > 0 ? "text-red-600" : 
                 variance < 0 ? "text-green-600" : "";
 
+              // First row: percentages
               return (
-                <tr key={campaign.id}>
-                  <td className="fixed-cell border-r left-0">{campaign.mediaChannel}</td>
-                  <td className="fixed-cell border-r left-[160px]">{campaign.campaignName}</td>
-                  <td className="fixed-cell border-r left-[340px]">{campaign.marketingObjective}</td>
-                  <td className="fixed-cell border-r left-[480px] text-xs">{campaign.targetAudience}</td>
-                  <td className="fixed-cell border-r left-[610px]">{campaign.startDate}</td>
-                  <td className="fixed-cell border-r left-[720px] text-right">{formatCurrency(campaign.totalBudget)}</td>
-                  <td className="fixed-cell border-r left-[850px] text-center">{campaign.durationDays}</td>
-                  
-                  {weeks.map(week => {
-                    const plannedValue = campaign.weeklyBudgets[week] || 0;
-                    const actualValue = campaign.weeklyActuals[week] || 0;
+                <React.Fragment key={campaign.id}>
+                  <tr>
+                    <td className="fixed-cell border-r left-0 bg-gray-100">{campaign.mediaChannel}</td>
+                    <td className="fixed-cell border-r left-[160px] bg-gray-100">{campaign.campaignName}</td>
+                    <td className="fixed-cell border-r left-[340px] bg-gray-100 text-center font-medium" colSpan={5}>
+                      Pourcentage (%)
+                    </td>
                     
-                    // Determine if this cell is currently being edited
-                    const isEditingPlanned = editingCell?.campaignId === campaign.id && 
+                    {weeks.map(week => {
+                      const percentValue = campaign.weeklyBudgetPercentages?.[week] || 0;
+                      
+                      // Determine if this cell is currently being edited
+                      const isEditingPercent = editingCell?.campaignId === campaign.id && 
                                             editingCell?.week === week && 
-                                            editingCell?.type === 'planned';
+                                            editingCell?.type === 'percentage';
+                      
+                      return (
+                        <td key={`${week}-percent`} className={`${getCellClassName(week)} bg-gray-100`}>
+                          {isEditingPercent ? (
+                            <input
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onBlur={handleCellBlur}
+                              onKeyDown={handleCellKeyDown}
+                              className="cell-input"
+                              autoFocus
+                            />
+                          ) : (
+                            <div 
+                              onClick={() => handleCellClick(campaign.id, week, 'percentage', percentValue)}
+                              className="cursor-pointer text-center"
+                            >
+                              {percentValue > 0 ? `${percentValue}%` : "-"}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
                     
-                    const isEditingActual = editingCell?.campaignId === campaign.id && 
-                                          editingCell?.week === week && 
-                                          editingCell?.type === 'actual';
+                    <td className="data-cell bg-gray-100 text-center">100%</td>
+                    <td className="data-cell bg-gray-100"></td>
+                    <td className="data-cell bg-gray-100"></td>
+                  </tr>
+
+                  {/* Second row: budget values */}
+                  <tr>
+                    <td className="fixed-cell border-r left-0"></td>
+                    <td className="fixed-cell border-r left-[160px]"></td>
+                    <td className="fixed-cell border-r left-[340px]">{campaign.marketingObjective}</td>
+                    <td className="fixed-cell border-r left-[480px] text-xs">{campaign.targetAudience}</td>
+                    <td className="fixed-cell border-r left-[610px]">{campaign.startDate}</td>
+                    <td className="fixed-cell border-r left-[720px] text-right">{formatCurrency(campaign.totalBudget)}</td>
+                    <td className="fixed-cell border-r left-[850px] text-center">{campaign.durationDays}</td>
                     
-                    // Only show actual value for weeks where we have data
-                    const showActual = actualValue > 0;
-                    
-                    return (
-                      <td key={week} className={getCellClassName(week)}>
-                        {/* Planned value */}
-                        {isEditingPlanned ? (
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={handleCellBlur}
-                            onKeyDown={handleCellKeyDown}
-                            className="cell-input"
-                            autoFocus
-                          />
-                        ) : (
-                          <div 
-                            onClick={() => handleCellClick(campaign.id, week, 'planned', plannedValue)}
-                            className="cursor-pointer"
-                          >
-                            {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
+                    {weeks.map(week => {
+                      const plannedValue = campaign.weeklyBudgets[week] || 0;
+                      const actualValue = campaign.weeklyActuals[week] || 0;
+                      
+                      // Determine if this cell is currently being edited
+                      const isEditingPlanned = editingCell?.campaignId === campaign.id && 
+                                              editingCell?.week === week && 
+                                              editingCell?.type === 'planned';
+                      
+                      const isEditingActual = editingCell?.campaignId === campaign.id && 
+                                            editingCell?.week === week && 
+                                            editingCell?.type === 'actual';
+                      
+                      return (
+                        <td key={week} className={getCellClassName(week)}>
+                          <div className="flex flex-col gap-1">
+                            {/* Planned value */}
+                            <div className="p-1 bg-blue-50 rounded">
+                              {isEditingPlanned ? (
+                                <input
+                                  type="text"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={handleCellKeyDown}
+                                  className="cell-input w-full"
+                                  autoFocus
+                                />
+                              ) : (
+                                <div 
+                                  onClick={() => handleCellClick(campaign.id, week, 'planned', plannedValue)}
+                                  className="cursor-pointer text-xs text-center"
+                                >
+                                  {plannedValue > 0 ? formatCurrency(plannedValue) : "-"}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Actual value */}
+                            <div className="p-1 bg-green-50 rounded">
+                              {isEditingActual ? (
+                                <input
+                                  type="text"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={handleCellKeyDown}
+                                  className="cell-input w-full"
+                                  autoFocus
+                                />
+                              ) : (
+                                <div 
+                                  onClick={() => handleCellClick(campaign.id, week, 'actual', actualValue)}
+                                  className={`cursor-pointer text-xs text-center ${actualValue > plannedValue ? 'text-red-500' : actualValue < plannedValue ? 'text-green-500' : ''}`}
+                                >
+                                  {actualValue > 0 ? formatCurrency(actualValue) : "-"}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        
-                        {/* Actual value (only shown if we have data) */}
-                        {showActual && (
-                          <div className="mt-1 text-xs">
-                            {isEditingActual ? (
-                              <input
-                                type="text"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={handleCellBlur}
-                                onKeyDown={handleCellKeyDown}
-                                className="cell-input text-xs"
-                                autoFocus
-                              />
-                            ) : (
-                              <div 
-                                onClick={() => handleCellClick(campaign.id, week, 'actual', actualValue)}
-                                className={`cursor-pointer ${actualValue > plannedValue ? 'text-red-500' : actualValue < plannedValue ? 'text-green-500' : ''}`}
-                              >
-                                {formatCurrency(actualValue)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                  
-                  {/* Totals and variance */}
-                  <td className="data-cell font-semibold">{formatCurrency(totalPlanned)}</td>
-                  <td className="data-cell font-semibold">{formatCurrency(totalActual)}</td>
-                  <td className={`data-cell font-semibold ${varianceClass}`}>
-                    {variance > 0 ? "+" : ""}{formatCurrency(variance)}
-                  </td>
-                </tr>
+                        </td>
+                      );
+                    })}
+                    
+                    {/* Totals and variance */}
+                    <td className="data-cell font-semibold">{formatCurrency(totalPlanned)}</td>
+                    <td className="data-cell font-semibold">{formatCurrency(totalActual)}</td>
+                    <td className={`data-cell font-semibold ${varianceClass}`}>
+                      {variance > 0 ? "+" : ""}{formatCurrency(variance)}
+                    </td>
+                  </tr>
+                </React.Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
       <div className="mt-2 text-xs text-gray-500">
-        <span className="inline-block mr-4">* Cliquez sur une cellule pour modifier le montant</span>
-        <span className="inline-block mr-4">* Valeurs en <span className="text-red-500">rouge</span>: dépassement</span>
-        <span className="inline-block">* Valeurs en <span className="text-green-500">vert</span>: sous-utilisation</span>
+        <div className="flex flex-wrap gap-4">
+          <span>* Cliquez sur une cellule pour modifier le montant</span>
+          <span>* <span className="bg-blue-50 px-1 rounded">Bleu</span>: Budget prévu</span>
+          <span>* <span className="bg-green-50 px-1 rounded">Vert</span>: Budget réel</span>
+          <span>* Valeurs en <span className="text-red-500">rouge</span>: dépassement</span>
+          <span>* Valeurs en <span className="text-green-500">vert</span>: sous-utilisation</span>
+        </div>
       </div>
     </div>
   );
