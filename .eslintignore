@@ -1,7 +1,4 @@
 
-build
-coverage
-dist
-node_modules
-.github
-.husky
+node_modules/
+dist/
+public/
