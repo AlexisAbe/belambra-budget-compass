@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useCampaigns } from '@/context/CampaignContext';
 import { fetchCampaignVersions } from '@/lib/supabaseUtils';
@@ -27,7 +26,7 @@ import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { history } from 'lucide-react';
+import { History } from 'lucide-react';
 
 interface CampaignVersionsProps {
   campaignId: string;
@@ -84,8 +83,6 @@ const CampaignVersions: React.FC<CampaignVersionsProps> = ({ campaignId, open, o
     }
   };
 
-  // Pour le moment, juste une fonctionnalité de consultation
-  // Le rollback nécessitera une API dédiée
   const handleRestoreVersion = (versionId: string) => {
     toast.info("La fonctionnalité de restauration de version sera bientôt disponible");
   };
@@ -154,10 +151,10 @@ const CampaignVersions: React.FC<CampaignVersionsProps> = ({ campaignId, open, o
             </div>
           ) : versions.length === 0 ? (
             <div className="py-8 text-center border rounded-md bg-gray-50">
-              <history className="mx-auto h-12 w-12 text-gray-400" />
+              <History className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-lg font-medium">Aucune version trouvée</h3>
               <p className="text-gray-500 mt-1">
-                Les versions sont créées automatiquement à chaque modification ou manuellement.
+                Les versions sont créées automatiquement à chaque modification de la campagne ou manuellement.
               </p>
             </div>
           ) : (

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
@@ -6,7 +5,7 @@ import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, history } from "lucide-react";
+import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, History } from "lucide-react";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 import CampaignVersions from "./CampaignVersions";
@@ -309,7 +308,7 @@ const CampaignTable = () => {
                           className="text-gray-600 hover:text-gray-900"
                           title="Historique des versions"
                         >
-                          <history className="w-4 h-4" />
+                          <History className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
