@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,6 +53,10 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
   const isEditing = !!campaign;
   const [durationMode, setDurationMode] = useState(campaign?.durationMode || "days");
 
+  // Local list for dynamic marketing objectives
+  const [localObjectives, setLocalObjectives] = useState<string[]>([...marketingObjectives]);
+  const [customObjective, setCustomObjective] = useState<string>("");
+
   const calculateDurationDays = (startDate: string, endDate: string) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -75,7 +80,17 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
     },
   });
 
+  // When submitting the form, dynamically add the custom objective if needed
   const onSubmit = (values: FormValues) => {
+    let updatedObjectives = [...localObjectives];
+    if (
+      values.marketingObjective &&
+      !localObjectives.map(obj => obj.toLowerCase()).includes(values.marketingObjective.toLowerCase())
+    ) {
+      updatedObjectives = [...localObjectives, values.marketingObjective];
+      setLocalObjectives(updatedObjectives);
+    }
+
     const finalDurationDays = values.durationMode === "days" 
       ? parseInt(values.durationDays || "0") 
       : calculateDurationDays(values.startDate, values.endDate || values.startDate);
@@ -159,20 +174,38 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
                   <FormItem>
                     <FormLabel>Objectif Marketing</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        setCustomObjective("");
+                      }}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un objectif" />
+                          <SelectValue placeholder="Sélectionner ou saisir un objectif" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {marketingObjectives.map((objective) => (
+                        {localObjectives.map((objective) => (
                           <SelectItem key={objective} value={objective}>
                             {objective}
                           </SelectItem>
                         ))}
+                        <SelectItem value="__custom__">
+                          <div>
+                            <Input
+                              placeholder="Ajouter un nouvel objectif"
+                              className="w-full"
+                              value={customObjective}
+                              onChange={e => {
+                                setCustomObjective(e.target.value);
+                                // On change value to custom typing in field
+                                field.onChange(e.target.value);
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -319,3 +352,4 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
 };
 
 export default CampaignForm;
+
