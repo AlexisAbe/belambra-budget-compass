@@ -91,7 +91,7 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
   for (let i = 1; i < rows.length; i++) {
     if (!rows[i].trim()) continue; // Skip empty rows
     
-    const columns = rows[i].split(',').map(col => col.trim());
+    const columns = rows[i].split(',').map(col => col ? col.trim() : '');
     
     if (columns.length < 3) {
       console.warn(`Skipping row ${i} with insufficient columns:`, columns);
@@ -103,8 +103,8 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
     const weeklyBudgets: Record<string, number> = {};
     const weeklyActuals: Record<string, number> = {};
     
-    // Extract total budget
-    const totalBudgetRaw = totalBudgetIndex >= 0 ? columns[totalBudgetIndex] : "0";
+    // Extract total budget - Add null/undefined check
+    const totalBudgetRaw = totalBudgetIndex >= 0 ? columns[totalBudgetIndex] || "0" : "0";
     // Clean the budget value (remove currency symbols, spaces, etc.)
     let cleanBudget = totalBudgetRaw.replace(/[^\d.,]/g, '').replace(',', '.');
     const totalBudget = parseFloat(cleanBudget) || 0;
@@ -115,7 +115,9 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
     Object.entries(weekIndices).forEach(([week, index]) => {
       if (index < columns.length) {
         // Extract percentage (remove % sign if present)
-        let percentValue = columns[index].replace(/[%\s]/g, '').replace(',', '.');
+        let percentValue = columns[index] || "0";
+        // Make sure percentValue is a string before calling replace
+        percentValue = typeof percentValue === 'string' ? percentValue.replace(/[%\s]/g, '').replace(',', '.') : "0";
         if (percentValue === "") percentValue = "0";
         
         const percentage = parseFloat(percentValue) || 0;
@@ -170,16 +172,16 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
       }
     }
     
-    // Create campaign object
+    // Create campaign object - Add null/undefined checks for all column values
     const campaign: Partial<Campaign> = {
       id: `imported-${Date.now()}-${i}`,
-      mediaChannel: mediaChannelIndex >= 0 ? columns[mediaChannelIndex] : "OTHER",
-      campaignName: campaignNameIndex >= 0 ? columns[campaignNameIndex] : `Campagne importée ${i}`,
-      marketingObjective: objectiveIndex >= 0 ? columns[objectiveIndex] : "OTHER",
-      targetAudience: audienceIndex >= 0 ? columns[audienceIndex] : "Audience générale",
+      mediaChannel: mediaChannelIndex >= 0 && columns[mediaChannelIndex] ? columns[mediaChannelIndex] : "OTHER",
+      campaignName: campaignNameIndex >= 0 && columns[campaignNameIndex] ? columns[campaignNameIndex] : `Campagne importée ${i}`,
+      marketingObjective: objectiveIndex >= 0 && columns[objectiveIndex] ? columns[objectiveIndex] : "OTHER",
+      targetAudience: audienceIndex >= 0 && columns[audienceIndex] ? columns[audienceIndex] : "Audience générale",
       startDate,
       totalBudget,
-      durationDays: durationIndex >= 0 ? parseInt(columns[durationIndex]) || 30 : 30,
+      durationDays: durationIndex >= 0 && columns[durationIndex] ? parseInt(columns[durationIndex]) || 30 : 30,
       status: "ACTIVE" as const,
       weeklyBudgetPercentages,
       weeklyBudgets,
