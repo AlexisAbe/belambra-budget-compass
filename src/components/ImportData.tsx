@@ -1,13 +1,12 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileUp, X, Download } from "lucide-react";
-import { validateImportFile, processImportFile } from "@/lib/importUtils";
+import { validateImportFile } from "@/lib/importUtils";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
-import Papa from "papaparse"; // Ensure this import is correct
+import Papa from "papaparse";
 import { Campaign } from "@/types";
 
 type ImportDataProps = {
@@ -24,46 +23,114 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        transformHeader: (header) => {
+          return header.trim().replace(/\s+/g, '_').toLowerCase();
+        },
         complete: (results) => {
-          const campaigns: Partial<Campaign>[] = results.data.map((row: any) => {
-            const weeklyBudgets: Record<string, number> = {};
-            const weeklyActuals: Record<string, number> = {};
-            const weeklyBudgetPercentages: Record<string, number> = {};
-            
-            Object.keys(row).forEach(key => {
-              if (key.match(/^S\d+$/)) {
-                const percentage = parseFloat(row[key]) || 0;
-                weeklyBudgetPercentages[key] = percentage;
-                
-                const budget = (percentage / 100) * parseFloat(row.totalBudget || "0");
-                weeklyBudgets[key] = budget;
-                weeklyActuals[key] = 0;
-              }
-            });
-
-            return {
-              id: `imported-${Date.now()}-${Math.random()}`,
-              mediaChannel: row.mediaChannel || "OTHER",
-              campaignName: row.campaignName || "Campagne importée",
-              marketingObjective: row.marketingObjective || "OTHER",
-              targetAudience: row.targetAudience || "Audience générale",
-              startDate: row.startDate || "2025-01-01",
-              totalBudget: parseFloat(row.totalBudget) || 0,
-              durationDays: parseInt(row.durationDays) || 30,
-              status: "ACTIVE" as const,
-              weeklyBudgetPercentages,
-              weeklyBudgets,
-              weeklyActuals
-            };
-          });
+          console.log("CSV Parse Results:", results);
           
-          resolve(campaigns);
+          if (results.errors && results.errors.length > 0) {
+            console.error("CSV Parse Errors:", results.errors);
+            reject(new Error(`Erreur d'analyse CSV: ${results.errors[0].message}`));
+            return;
+          }
+          
+          try {
+            const campaigns: Partial<Campaign>[] = results.data.map((row: any, index: number) => {
+              console.log(`Processing row ${index}:`, row);
+              
+              const mediaChannel = row.levier_media || row.media_channel || row.levier_média || "OTHER";
+              const campaignName = row.nom_campagne || row.campaign_name || `Campagne importée ${index + 1}`;
+              const marketingObjective = row.objectif_marketing || row.marketing_objective || "OTHER";
+              const targetAudience = row.cible_audience || row.cible || row.audience || row.target_audience || "Audience générale";
+              const startDate = formatDate(row.date_début || row.date_debut || row.start_date || "2025-01-01");
+              const totalBudget = parseFloat(row.budget_total || row.total_budget || "0") || 0;
+              const durationDays = parseInt(row.durée_jours || row.duree_jours || row.duration_days || row.duration || "30") || 30;
+              
+              const weeklyBudgets: Record<string, number> = {};
+              const weeklyActuals: Record<string, number> = {};
+              const weeklyBudgetPercentages: Record<string, number> = {};
+              
+              Object.keys(row).forEach(key => {
+                const weekMatch = key.match(/^s(\d+)(?:\s*\(%\))?$/i);
+                if (weekMatch) {
+                  const weekNum = parseInt(weekMatch[1]);
+                  const weekKey = `S${weekNum}`;
+                  
+                  let percentageValue = row[key];
+                  if (typeof percentageValue === 'string') {
+                    percentageValue = percentageValue.replace(/[^\d.,]/g, '').replace(',', '.');
+                  }
+                  const percentage = parseFloat(percentageValue) || 0;
+                  
+                  weeklyBudgetPercentages[weekKey] = percentage;
+                  weeklyBudgets[weekKey] = (percentage / 100) * totalBudget;
+                  weeklyActuals[weekKey] = 0;
+                }
+              });
+              
+              if (Object.keys(weeklyBudgetPercentages).length === 0) {
+                for (let i = 1; i <= 52; i++) {
+                  const weekKey = `S${i}`;
+                  weeklyBudgetPercentages[weekKey] = 0;
+                  weeklyBudgets[weekKey] = 0;
+                  weeklyActuals[weekKey] = 0;
+                }
+              }
+              
+              return {
+                id: `imported-${Date.now()}-${Math.random()}`,
+                mediaChannel,
+                campaignName,
+                marketingObjective,
+                targetAudience,
+                startDate,
+                totalBudget,
+                durationDays,
+                status: "ACTIVE" as const,
+                weeklyBudgetPercentages,
+                weeklyBudgets,
+                weeklyActuals
+              };
+            });
+            
+            console.log("Processed campaigns:", campaigns);
+            resolve(campaigns);
+          } catch (error) {
+            console.error("Error processing campaigns:", error);
+            reject(error);
+          }
         },
         error: (error) => {
+          console.error("CSV parsing error:", error);
           reject(error);
         }
       });
     });
+  };
+  
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "2025-01-01";
+    
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+      }
+      
+      if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateString)) {
+        const parts = dateString.split(/[\/\-]/);
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error("Date parsing error:", e);
+    }
+    
+    return "2025-01-01";
   };
   
   const handleImport = async (file: File) => {
@@ -77,7 +144,8 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       if (file.name.endsWith('.csv')) {
         importedCampaigns = await processCSV(file);
       } else if (file.name.endsWith('.json')) {
-        importedCampaigns = await processImportFile(file);
+        const fileContent = await file.text();
+        importedCampaigns = JSON.parse(fileContent);
       } else {
         throw new Error("Format de fichier non supporté");
       }
@@ -92,7 +160,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       onClose();
     } catch (error) {
       console.error("Error importing campaigns:", error);
-      toast.error("Erreur lors de l'import. Vérifiez le format du fichier.");
+      toast.error(`Erreur lors de l'import: ${error instanceof Error ? error.message : 'Vérifiez le format du fichier'}`);
     } finally {
       setIsUploading(false);
     }
@@ -166,7 +234,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
               disabled={isUploading}
               className="cursor-pointer"
             >
-              Parcourir les fichiers
+              {isUploading ? "Importation en cours..." : "Parcourir les fichiers"}
             </Button>
           </label>
         </div>
@@ -174,7 +242,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
         <div className="text-xs text-gray-500 space-y-1">
           <p>Formats supportés: CSV, JSON</p>
           <p>Taille maximale: 5MB</p>
-          <p>Les colonnes doivent inclure: nom de campagne, levier média, objectif, etc.</p>
+          <p>Les colonnes attendues incluent: Levier Média, Nom Campagne, Objectif Marketing, Cible/Audience, etc.</p>
           <p>Les colonnes S1-S52 représentent la <strong>ventilation en pourcentage (%)</strong> du budget total</p>
           <p>Pour chaque semaine, indiquez le pourcentage du budget total à allouer</p>
           <p>La somme des pourcentages doit être égale à 100% pour chaque campagne</p>
