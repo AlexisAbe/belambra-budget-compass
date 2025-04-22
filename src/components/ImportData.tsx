@@ -1,14 +1,16 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileUp, X, Download } from "lucide-react";
+import { FileUp, X, Download, Pencil } from "lucide-react";
 import { processImportFile } from "@/lib/import/importHandler";
 import { validateImportFile } from "@/lib/import/validateImport";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
 import GoogleSheetsImport from "@/components/GoogleSheetsImport";
+import DataTable from "@/components/DataTable";
 
 type ImportDataProps = {
   onClose: () => void;
@@ -18,6 +20,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
   const { setCampaigns } = useCampaigns();
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showDataTable, setShowDataTable] = useState(false);
   
   const handleImport = async (file: File) => {
     if (!validateImportFile(file)) return;
@@ -32,43 +35,47 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
         return;
       }
       
-      setCampaigns(prevCampaigns => {
-        const existingCampaignNames = new Set(prevCampaigns.map(c => `${c.mediaChannel}-${c.campaignName}`.toLowerCase()));
-        const newCampaigns = importedCampaigns.filter(
-          campaign => !existingCampaignNames.has(`${campaign.mediaChannel}-${campaign.campaignName}`.toLowerCase())
-        );
-        
-        if (newCampaigns.length === 0) {
-          toast.warning("Toutes les campagnes du fichier existent déjà");
-          return prevCampaigns;
-        }
-        
-        const fullNewCampaigns: Campaign[] = newCampaigns.map(campaign => ({
-          id: campaign.id || `imported-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          mediaChannel: campaign.mediaChannel || "OTHER",
-          campaignName: campaign.campaignName || `Campagne importée ${Date.now()}`,
-          marketingObjective: campaign.marketingObjective || "OTHER",
-          targetAudience: campaign.targetAudience || "Audience générale",
-          startDate: campaign.startDate || new Date().toISOString().substring(0, 10),
-          totalBudget: campaign.totalBudget || 0,
-          durationDays: campaign.durationDays || 30,
-          status: campaign.status || "ACTIVE",
-          weeklyBudgetPercentages: campaign.weeklyBudgetPercentages || {},
-          weeklyBudgets: campaign.weeklyBudgets || {},
-          weeklyActuals: campaign.weeklyActuals || {}
-        }));
-        
-        toast.success(`${fullNewCampaigns.length} nouvelles campagnes importées`);
-        return [...prevCampaigns, ...fullNewCampaigns];
-      });
-      
-      onClose();
+      handleImportCampaigns(importedCampaigns);
     } catch (error) {
-      console.error("Error importing campaigns:", error);
+      console.error("Error processing import file:", error);
       toast.error(`Erreur lors de l'import: ${error instanceof Error ? error.message : 'Vérifiez le format du fichier'}`);
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleImportCampaigns = (importedCampaigns: Partial<Campaign>[]) => {
+    setCampaigns(prevCampaigns => {
+      const existingCampaignNames = new Set(prevCampaigns.map(c => `${c.mediaChannel}-${c.campaignName}`.toLowerCase()));
+      const newCampaigns = importedCampaigns.filter(
+        campaign => !existingCampaignNames.has(`${campaign.mediaChannel}-${campaign.campaignName}`.toLowerCase())
+      );
+      
+      if (newCampaigns.length === 0) {
+        toast.warning("Toutes les campagnes du fichier existent déjà");
+        return prevCampaigns;
+      }
+      
+      const fullNewCampaigns: Campaign[] = newCampaigns.map(campaign => ({
+        id: campaign.id || `imported-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        mediaChannel: campaign.mediaChannel || "OTHER",
+        campaignName: campaign.campaignName || `Campagne importée ${Date.now()}`,
+        marketingObjective: campaign.marketingObjective || "OTHER",
+        targetAudience: campaign.targetAudience || "Audience générale",
+        startDate: campaign.startDate || new Date().toISOString().substring(0, 10),
+        totalBudget: campaign.totalBudget || 0,
+        durationDays: campaign.durationDays || 30,
+        status: campaign.status || "ACTIVE",
+        weeklyBudgetPercentages: campaign.weeklyBudgetPercentages || {},
+        weeklyBudgets: campaign.weeklyBudgets || {},
+        weeklyActuals: campaign.weeklyActuals || {}
+      }));
+      
+      toast.success(`${fullNewCampaigns.length} nouvelles campagnes importées`);
+      return [...prevCampaigns, ...fullNewCampaigns];
+    });
+    
+    onClose();
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +108,15 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
     downloadTemplate(format);
     toast.success(`Modèle ${format.toUpperCase()} téléchargé`);
   };
+
+  if (showDataTable) {
+    return (
+      <DataTable 
+        onImport={handleImportCampaigns}
+        onCancel={() => setShowDataTable(false)}
+      />
+    );
+  }
   
   return (
     <div className="bg-white rounded-lg shadow-md p-6 max-w-md w-full mx-auto">
@@ -114,28 +130,20 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       <div className="space-y-4">
         <GoogleSheetsImport onImportSuccess={(data) => {
           if (data && data.length > 0) {
-            setCampaigns(prevCampaigns => {
-              const existingCampaignNames = new Set(
-                prevCampaigns.map(c => `${c.mediaChannel}-${c.campaignName}`.toLowerCase())
-              );
-              
-              const newCampaigns = data.filter(
-                campaign => !existingCampaignNames.has(
-                  `${campaign.mediaChannel}-${campaign.campaignName}`.toLowerCase()
-                )
-              );
-
-              if (newCampaigns.length === 0) {
-                toast.warning("Toutes les campagnes du fichier existent déjà");
-                return prevCampaigns;
-              }
-
-              toast.success(`${newCampaigns.length} nouvelles campagnes importées`);
-              return [...prevCampaigns, ...newCampaigns];
-            });
-            onClose();
+            handleImportCampaigns(data);
           }
         }} />
+
+        <div className="border-t border-gray-200 my-4"></div>
+
+        <Button
+          onClick={() => setShowDataTable(true)}
+          className="w-full flex items-center justify-center gap-2"
+          variant="outline"
+        >
+          <Pencil className="h-4 w-4" />
+          Saisir ou coller des données manuellement
+        </Button>
 
         <div className="border-t border-gray-200 my-4"></div>
 
@@ -176,12 +184,6 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           <p>Taille maximale: 5MB</p>
           <p>Les colonnes attendues incluent: Levier Média, Nom Campagne, Objectif Marketing, Cible/Audience, etc.</p>
           <p>Pour le CSV, les séparateurs acceptés sont la virgule (,) ou le point-virgule (;)</p>
-          <p>Les colonnes S1-S52 peuvent contenir soit:</p>
-          <ul className="list-disc pl-4 mt-1">
-            <li>Des <strong>pourcentages</strong> (%) du budget total</li>
-            <li>Des <strong>montants</strong> (€) qui seront convertis en pourcentages</li>
-          </ul>
-          <p>Les dates sont acceptées dans plusieurs formats (JJ/MM/AAAA, AAAA-MM-JJ, etc.)</p>
         </div>
 
         <div className="border-t pt-4 mt-4">
@@ -207,12 +209,6 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
               Modèle JSON
             </Button>
           </div>
-        </div>
-        
-        <div className="pt-2 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Annuler
-          </Button>
         </div>
       </div>
     </div>
