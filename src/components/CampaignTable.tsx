@@ -10,7 +10,7 @@ import CampaignTableHeader from "./CampaignTable/CampaignTableHeader";
 import CampaignTableToolbar from "./CampaignTable/CampaignTableToolbar";
 import CampaignTableRow from "./CampaignTable/CampaignTableRow";
 import CampaignTableFooter from "./CampaignTable/CampaignTableFooter";
-import { Clock, History } from "lucide-react";
+import { Clock, History, Check, Pause, X } from "lucide-react";
 
 const CampaignTable = () => {
   const {
