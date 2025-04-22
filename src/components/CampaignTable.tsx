@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
 import { weeks } from "@/services/mockData";
@@ -32,6 +31,9 @@ const CampaignTable = () => {
     .filter(c => selectedChannel === "all" || c.mediaChannel === selectedChannel)
     .every(c => selectedIds.includes(c.id));
   const someSelected = selectedIds.length > 0;
+  
+  // Create a reference for the checkbox
+  const checkboxRef = useRef<HTMLButtonElement>(null);
 
   const handleSelectOne = (campaignId: string, checked: boolean) => {
     setSelectedIds((prev) =>
@@ -180,6 +182,20 @@ const CampaignTable = () => {
     setSelectedVersionCampaignId(campaignId);
   };
 
+  // Effect to manually set the visual indeterminate state of the checkbox
+  React.useEffect(() => {
+    if (checkboxRef.current) {
+      // We need to use DOM API to set indeterminate state as it's not a React prop
+      const isIndeterminate = someSelected && !allFilteredChecked;
+      
+      // Access the actual checkbox input inside the Checkbox component
+      const inputElement = checkboxRef.current.querySelector('input');
+      if (inputElement) {
+        inputElement.indeterminate = isIndeterminate;
+      }
+    }
+  }, [someSelected, allFilteredChecked]);
+
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-4">
@@ -213,7 +229,6 @@ const CampaignTable = () => {
             <Percent className="w-4 h-4" />
             {displayMode === 'amount' ? 'Afficher %' : 'Afficher €'}
           </Button>
-          {/* NEW: Delete selected */}
           <Button
             variant="destructive"
             size="sm"
@@ -281,19 +296,12 @@ const CampaignTable = () => {
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {/* Checkbox header */}
               <th className="header-cell w-8 sticky left-0 bg-white z-30">
                 <div className="flex items-center justify-center">
                   <Checkbox
                     checked={allFilteredChecked}
-                    // Solution pour indeterminate: passer par un style HTML ou custom renderer
-                    // car la propriété indeterminate n'existe pas sur le composant Checkbox
-                    ref={(checkbox) => {
-                      if (checkbox) {
-                        checkbox.indeterminate = !allFilteredChecked && someSelected;
-                      }
-                    }}
                     onCheckedChange={(value: any) => handleSelectAll(!!value)}
+                    ref={checkboxRef}
                   />
                 </div>
               </th>
@@ -325,7 +333,6 @@ const CampaignTable = () => {
               return (
                 <React.Fragment key={campaign.id}>
                   <tr>
-                    {/* Checkbox cell */}
                     <td className="sticky left-0 z-20 bg-white border-r">
                       <Checkbox
                         checked={selectedIds.includes(campaign.id)}
@@ -335,9 +342,7 @@ const CampaignTable = () => {
                         aria-label="Sélectionner cette campagne"
                       />
                     </td>
-                    {/* Editable cells */}
                     <td className="fixed-cell border-r left-0 bg-gray-100">
-                      {/* Media channel non editable */}
                       {campaign.mediaChannel}
                     </td>
                     <td className="fixed-cell border-r left-[160px] bg-gray-100">
