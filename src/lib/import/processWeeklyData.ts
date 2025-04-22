@@ -12,37 +12,52 @@ export function processWeeklyData(
   const weeklyActuals: Record<string, number> = {};
   let totalPercentage = 0;
   
-  // Initialize with zeros
+  // Initialiser avec des zéros
   weeks.forEach(week => {
     weeklyBudgetPercentages[week] = 0;
     weeklyBudgets[week] = 0;
     weeklyActuals[week] = 0;
   });
   
-  // Process percentages and calculate budgets
+  // Traiter les pourcentages et calculer les budgets
   Object.entries(weekIndices).forEach(([week, index]) => {
     if (index < columns.length) {
       let percentValue = columns[index] || "0";
-      percentValue = typeof percentValue === 'string' ? 
-        percentValue.replace(/[%\s]/g, '').replace(',', '.') : "0";
+      
+      // Nettoyage et conversion de la valeur
+      if (typeof percentValue === 'string') {
+        // Supprimer les symboles %, €, espaces, et convertir les virgules en points
+        percentValue = percentValue.replace(/[%€\s]/g, '').replace(',', '.');
+      }
+      
       if (percentValue === "") percentValue = "0";
       
-      const percentage = parseFloat(percentValue) || 0;
+      // Si la valeur est un nombre direct (non pourcentage)
+      let percentage = parseFloat(percentValue) || 0;
+      
+      // Si le budget total existe et que la valeur semble être un montant plutôt qu'un pourcentage
+      if (totalBudget > 0 && percentage > 0 && percentage > 10 && !percentValue.includes('%')) {
+        // Convertir le montant en pourcentage du budget total
+        percentage = (percentage / totalBudget) * 100;
+        console.log(`Ligne ${rowNum}, Semaine ${week}: Converti ${percentValue} € en ${percentage.toFixed(1)}% du budget total ${totalBudget} €`);
+      }
+      
       weeklyBudgetPercentages[week] = percentage;
       totalPercentage += percentage;
       
       const weeklyBudget = (percentage / 100) * totalBudget;
       weeklyBudgets[week] = weeklyBudget;
-      
-      console.log(`Ligne ${rowNum}, Semaine ${week}: ${percentage}% de ${totalBudget} = ${weeklyBudget}`);
     }
   });
   
-  // Normalize percentages if total is not 100%
+  // Normaliser les pourcentages si le total n'est pas 100%
   if (totalPercentage > 0 && Math.abs(totalPercentage - 100) > 1) {
-    console.warn(`Ligne ${rowNum}: Total des pourcentages (${totalPercentage}%) différent de 100%. Normalisation appliquée.`);
+    console.warn(`Ligne ${rowNum}: Total des pourcentages (${totalPercentage.toFixed(1)}%) différent de 100%. Normalisation appliquée.`);
+    
+    const factor = 100 / totalPercentage;
     Object.keys(weeklyBudgetPercentages).forEach(week => {
-      weeklyBudgetPercentages[week] = (weeklyBudgetPercentages[week] / totalPercentage) * 100;
+      weeklyBudgetPercentages[week] = weeklyBudgetPercentages[week] * factor;
+      weeklyBudgets[week] = (weeklyBudgetPercentages[week] / 100) * totalBudget;
     });
   }
   

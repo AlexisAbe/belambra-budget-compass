@@ -33,9 +33,9 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       }
       
       setCampaigns(prevCampaigns => {
-        const existingCampaignNames = new Set(prevCampaigns.map(c => c.campaignName.toLowerCase()));
+        const existingCampaignNames = new Set(prevCampaigns.map(c => `${c.mediaChannel}-${c.campaignName}`.toLowerCase()));
         const newCampaigns = importedCampaigns.filter(
-          campaign => !existingCampaignNames.has(campaign.campaignName.toLowerCase())
+          campaign => !existingCampaignNames.has(`${campaign.mediaChannel}-${campaign.campaignName}`.toLowerCase())
         );
         
         if (newCampaigns.length === 0) {
@@ -43,7 +43,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           return prevCampaigns;
         }
         
-        // Ensure all campaigns have the required fields
+        // S'assurer que toutes les campagnes ont les champs requis
         const fullNewCampaigns: Campaign[] = newCampaigns.map(campaign => ({
           id: campaign.id || `imported-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           mediaChannel: campaign.mediaChannel || "OTHER",
@@ -149,9 +149,13 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           <p>Formats supportés: CSV, JSON</p>
           <p>Taille maximale: 5MB</p>
           <p>Les colonnes attendues incluent: Levier Média, Nom Campagne, Objectif Marketing, Cible/Audience, etc.</p>
-          <p>Les colonnes S1-S52 représentent la <strong>ventilation en pourcentage (%)</strong> du budget total</p>
-          <p>Pour chaque semaine, indiquez le pourcentage du budget total à allouer</p>
-          <p>La somme des pourcentages doit être égale à 100% pour chaque campagne</p>
+          <p>Pour le CSV, les séparateurs acceptés sont la virgule (,) ou le point-virgule (;)</p>
+          <p>Les colonnes S1-S52 peuvent contenir soit:</p>
+          <ul className="list-disc pl-4 mt-1">
+            <li>Des <strong>pourcentages</strong> (%) du budget total</li>
+            <li>Des <strong>montants</strong> (€) qui seront convertis en pourcentages</li>
+          </ul>
+          <p>Les dates sont acceptées dans plusieurs formats (JJ/MM/AAAA, AAAA-MM-JJ, etc.)</p>
         </div>
 
         <div className="border-t pt-4 mt-4">

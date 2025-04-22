@@ -21,16 +21,16 @@ export function generateCsvTemplate(): string {
   const weekColumns = weeks.map(week => `${week} (%)`);
   
   // Combine all header columns
-  const headerRow = [...basicColumns, ...weekColumns].join(',');
+  const headerRow = [...basicColumns, ...weekColumns].join(';');
   
   // Generate example rows with percentage allocation
   const exampleRows = [
     [
       "META",
-      "Exemple Campagne Été",
+      "Campagne Été",
       "CONVERSION",
       "Familles avec enfants",
-      "2025-04-01",
+      "01/04/2025",
       "85000",
       "90",
       // Add percentage values for a few weeks
@@ -44,13 +44,13 @@ export function generateCsvTemplate(): string {
         if (week === "S19") return "10";
         return "0";
       })
-    ].join(','),
+    ].join(';'),
     [
       "GOOGLE",
-      "Exemple Search Hiver",
+      "Search Hiver",
       "CONSIDERATION",
       "CSP+ 35-55 ans",
-      "2025-01-15",
+      "15/01/2025",
       "50000",
       "60",
       // Add percentage values for a few weeks
@@ -62,7 +62,7 @@ export function generateCsvTemplate(): string {
         if (week === "S6") return "20";
         return "0";
       })
-    ].join(',')
+    ].join(';')
   ];
   
   // Combine header and example rows
