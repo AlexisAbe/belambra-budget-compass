@@ -12,6 +12,7 @@ import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 import CampaignVersions from "./CampaignVersions";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CampaignTable = () => {
   const { campaigns, updateWeeklyBudget, updateWeeklyActual, updateWeeklyPercentage, updateCampaign, deleteCampaign, currentWeek } = useCampaigns();
@@ -43,7 +44,7 @@ const CampaignTable = () => {
   };
 
   const handleDeleteSelected = () => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedIds.length} campagne(s) ?`)) {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedIds.length} campagne(s) ?`)) {
       selectedIds.forEach(deleteCampaign);
       setSelectedIds([]);
     }
@@ -219,7 +220,6 @@ const CampaignTable = () => {
             className="flex items-center gap-1"
             onClick={handleDeleteSelected}
             disabled={!someSelected}
-            title="Supprimer les campagnes sélectionnées"
           >
             <Trash2 className="w-4 h-4" />
             {someSelected ? `Supprimer (${selectedIds.length})` : "Supprimer"}
@@ -283,11 +283,19 @@ const CampaignTable = () => {
             <tr>
               {/* Checkbox header */}
               <th className="header-cell w-8 sticky left-0 bg-white z-30">
-                <Checkbox
-                  checked={allFilteredChecked}
-                  indeterminate={!allFilteredChecked && someSelected}
-                  onCheckedChange={(value: any) => handleSelectAll(!!value)}
-                />
+                <div className="flex items-center justify-center">
+                  <Checkbox
+                    checked={allFilteredChecked}
+                    // Solution pour indeterminate: passer par un style HTML ou custom renderer
+                    // car la propriété indeterminate n'existe pas sur le composant Checkbox
+                    ref={(checkbox) => {
+                      if (checkbox) {
+                        checkbox.indeterminate = !allFilteredChecked && someSelected;
+                      }
+                    }}
+                    onCheckedChange={(value: any) => handleSelectAll(!!value)}
+                  />
+                </div>
               </th>
               <th className="header-cell fixed-cell z-20 min-w-[160px]">Levier Média</th>
               <th className="header-cell fixed-cell z-20 left-[160px] min-w-[180px]">Nom Campagne</th>
@@ -353,11 +361,19 @@ const CampaignTable = () => {
                           >
                             {campaign.campaignName}
                           </span>
-                          <Pencil
-                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            onClick={() => startEditCampaignField(campaign.id, "campaignName", campaign.campaignName)}
-                            title="Modifier le nom"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Pencil
+                                  className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  onClick={() => startEditCampaignField(campaign.id, "campaignName", campaign.campaignName)}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modifier le nom</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </td>
@@ -382,11 +398,19 @@ const CampaignTable = () => {
                           >
                             {campaign.marketingObjective}
                           </span>
-                          <Pencil
-                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            onClick={() => startEditCampaignField(campaign.id, "marketingObjective", campaign.marketingObjective)}
-                            title="Modifier l'objectif"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Pencil
+                                  className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  onClick={() => startEditCampaignField(campaign.id, "marketingObjective", campaign.marketingObjective)}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modifier l'objectif</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </td>
@@ -411,11 +435,19 @@ const CampaignTable = () => {
                           >
                             {campaign.targetAudience}
                           </span>
-                          <Pencil
-                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            onClick={() => startEditCampaignField(campaign.id, "targetAudience", campaign.targetAudience)}
-                            title="Modifier la cible"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Pencil
+                                  className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  onClick={() => startEditCampaignField(campaign.id, "targetAudience", campaign.targetAudience)}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modifier la cible</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </td>
@@ -440,11 +472,19 @@ const CampaignTable = () => {
                           >
                             {campaign.startDate}
                           </span>
-                          <Pencil
-                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            onClick={() => startEditCampaignField(campaign.id, "startDate", campaign.startDate)}
-                            title="Modifier la date"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Pencil
+                                  className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  onClick={() => startEditCampaignField(campaign.id, "startDate", campaign.startDate)}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modifier la date</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </td>
@@ -471,14 +511,22 @@ const CampaignTable = () => {
                           onClick={() => handleBudgetEdit(campaign.id, campaign.totalBudget)}
                         >
                           {formatCurrency(campaign.totalBudget)}
-                          <Pencil
-                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleBudgetEdit(campaign.id, campaign.totalBudget);
-                            }}
-                            title="Modifier le budget"
-                          />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Pencil
+                                  className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleBudgetEdit(campaign.id, campaign.totalBudget);
+                                  }}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Modifier le budget</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </td>
@@ -517,24 +565,41 @@ const CampaignTable = () => {
                     </td>
                     <td className="fixed-cell border-r left-[930px] bg-gray-100">
                       <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenVersions(campaign.id)}
-                          className="text-sky-600 hover:text-sky-900 hover:bg-sky-50 border-sky-200"
-                          title="Historique des versions"
-                        >
-                          <History className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(campaign.id)}
-                          className="text-red-500 hover:text-red-700"
-                          title="Supprimer la campagne"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenVersions(campaign.id)}
+                                className="text-sky-600 hover:text-sky-900 hover:bg-sky-50 border-sky-200"
+                              >
+                                <History className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Historique des versions</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(campaign.id)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Supprimer la campagne</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </td>
                     
@@ -641,7 +706,7 @@ const CampaignTable = () => {
       </div>
       <div className="mt-2 text-xs text-gray-500">
         <div className="flex flex-wrap gap-4">
-          <span>* Cliquez sur une cellule ou l’icône <Pencil className="inline align-text-bottom w-3 h-3" /> pour modifier les éléments de campagne.</span>
+          <span>* Cliquez sur une cellule ou l'icône <Pencil className="inline align-text-bottom w-3 h-3" /> pour modifier les éléments de campagne.</span>
           <span>* Cochez pour sélectionner une ou plusieurs campagnes puis cliquez sur "Supprimer".</span>
           <span>* <span className="bg-blue-50 px-1 rounded">Bleu</span>: Budget prévu {displayMode === 'percentage' && '(%)' || '(€)'}</span>
           <span>* <span className="bg-green-50 px-1 rounded">Vert</span>: Budget réel</span>
