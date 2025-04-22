@@ -69,6 +69,7 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
       const weekNum = parseInt(match[1]);
       const weekKey = `S${weekNum}`;
       weekIndices[weekKey] = i;
+      console.log(`Found week column: ${header} at index ${i}, mapped to key ${weekKey}`);
     }
   }
   
@@ -109,6 +110,8 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
         
         // Calculate absolute budget value based on percentage
         weeklyBudgets[week] = (percentValue / 100) * totalBudget;
+        
+        console.log(`Week ${week}: ${percentValue}% of ${totalBudget} = ${weeklyBudgets[week]}`);
       } else {
         weeklyBudgetPercentages[week] = 0;
         weeklyBudgets[week] = 0;
@@ -158,6 +161,10 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
       weeklyBudgets,
       weeklyActuals
     };
+    
+    console.log("Created campaign:", campaign.campaignName);
+    console.log("Weekly budget percentages:", campaign.weeklyBudgetPercentages);
+    console.log("Weekly budgets:", campaign.weeklyBudgets);
     
     campaigns.push(campaign);
   }

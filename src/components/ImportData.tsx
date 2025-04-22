@@ -1,9 +1,10 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileUp, X, Download } from "lucide-react";
-import { validateImportFile } from "@/lib/importUtils";
+import { validateImportFile, processImportFile } from "@/lib/importUtils";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import Papa from "papaparse";
@@ -44,19 +45,29 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
               const marketingObjective = row.objectif_marketing || row.marketing_objective || "OTHER";
               const targetAudience = row.cible_audience || row.cible || row.audience || row.target_audience || "Audience générale";
               const startDate = formatDate(row.date_début || row.date_debut || row.start_date || "2025-01-01");
-              const totalBudget = parseFloat(row.budget_total || row.total_budget || "0") || 0;
+              
+              // Clean the budget value
+              let totalBudgetRaw = row.budget_total || row.total_budget || "0";
+              if (typeof totalBudgetRaw === 'string') {
+                totalBudgetRaw = totalBudgetRaw.replace(/[^\d.,]/g, '').replace(',', '.');
+              }
+              const totalBudget = parseFloat(totalBudgetRaw) || 0;
+              
               const durationDays = parseInt(row.durée_jours || row.duree_jours || row.duration_days || row.duration || "30") || 30;
               
               const weeklyBudgets: Record<string, number> = {};
               const weeklyActuals: Record<string, number> = {};
               const weeklyBudgetPercentages: Record<string, number> = {};
               
+              // Find week columns and process percentages
               Object.keys(row).forEach(key => {
-                const weekMatch = key.match(/^s(\d+)(?:\s*\(%\))?$/i);
+                // Look for various week formats (s1, s01, semaine1, etc.)
+                const weekMatch = key.match(/^(?:s|semaine|week)[-_\s]*(\d+)(?:\s*\(?%\)?)?$/i);
                 if (weekMatch) {
                   const weekNum = parseInt(weekMatch[1]);
                   const weekKey = `S${weekNum}`;
                   
+                  // Handle percentage value - clean it up
                   let percentageValue = row[key];
                   if (typeof percentageValue === 'string') {
                     percentageValue = percentageValue.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -64,11 +75,18 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
                   const percentage = parseFloat(percentageValue) || 0;
                   
                   weeklyBudgetPercentages[weekKey] = percentage;
-                  weeklyBudgets[weekKey] = (percentage / 100) * totalBudget;
-                  weeklyActuals[weekKey] = 0;
+                  
+                  // Calculate the weekly budget amount based on percentage
+                  const budgetAmount = (percentage / 100) * totalBudget;
+                  weeklyBudgets[weekKey] = budgetAmount;
+                  
+                  console.log(`Week ${weekKey}: ${percentage}% of ${totalBudget} = ${budgetAmount}`);
+                  
+                  weeklyActuals[weekKey] = 0; // Initialize actual value
                 }
               });
               
+              // If no week data was found, initialize with zeros for all weeks
               if (Object.keys(weeklyBudgetPercentages).length === 0) {
                 for (let i = 1; i <= 52; i++) {
                   const weekKey = `S${i}`;
@@ -78,7 +96,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
                 }
               }
               
-              return {
+              const campaign: Partial<Campaign> = {
                 id: `imported-${Date.now()}-${Math.random()}`,
                 mediaChannel,
                 campaignName,
@@ -92,6 +110,12 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
                 weeklyBudgets,
                 weeklyActuals
               };
+              
+              console.log("Created campaign:", campaign.campaignName);
+              console.log("Weekly budget percentages:", campaign.weeklyBudgetPercentages);
+              console.log("Weekly budgets:", campaign.weeklyBudgets);
+              
+              return campaign;
             });
             
             console.log("Processed campaigns:", campaigns);
