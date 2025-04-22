@@ -18,6 +18,8 @@ const CampaignTable = () => {
   const [editValue, setEditValue] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<string>("all");
   const [displayMode, setDisplayMode] = useState<'amount' | 'percentage'>('amount');
+  const [editingBudget, setEditingBudget] = useState<string | null>(null);
+  const [editingBudgetValue, setEditingBudgetValue] = useState("");
 
   const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
@@ -85,6 +87,31 @@ const CampaignTable = () => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) {
       deleteCampaign(campaignId);
     }
+  };
+
+  const handleBudgetEdit = (campaignId: string, currentBudget: number) => {
+    setEditingBudget(campaignId);
+    setEditingBudgetValue(currentBudget.toString());
+  };
+
+  const handleBudgetSave = (campaign: Campaign) => {
+    const newBudget = parseFloat(editingBudgetValue);
+    if (!isNaN(newBudget) && newBudget >= 0) {
+      const newWeeklyBudgets = { ...campaign.weeklyBudgets };
+      Object.entries(campaign.weeklyBudgetPercentages || {}).forEach(([week, percentage]) => {
+        newWeeklyBudgets[week] = (percentage / 100) * newBudget;
+      });
+
+      const updatedCampaign = {
+        ...campaign,
+        totalBudget: newBudget,
+        weeklyBudgets: newWeeklyBudgets
+      };
+      
+      updateCampaign(updatedCampaign);
+      toast.success("Budget total mis à jour");
+    }
+    setEditingBudget(null);
   };
 
   const filteredCampaigns = campaigns.filter(campaign => 
@@ -197,7 +224,32 @@ const CampaignTable = () => {
                     <td className="fixed-cell border-r left-[340px] bg-gray-100">{campaign.marketingObjective}</td>
                     <td className="fixed-cell border-r left-[480px] bg-gray-100 text-xs">{campaign.targetAudience}</td>
                     <td className="fixed-cell border-r left-[610px] bg-gray-100">{campaign.startDate}</td>
-                    <td className="fixed-cell border-r left-[720px] bg-gray-100 text-right">{formatCurrency(campaign.totalBudget)}</td>
+                    <td className="fixed-cell border-r left-[720px] bg-gray-100 text-right">
+                      {editingBudget === campaign.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={editingBudgetValue}
+                            onChange={(e) => setEditingBudgetValue(e.target.value)}
+                            onBlur={() => handleBudgetSave(campaign)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleBudgetSave(campaign);
+                              if (e.key === 'Escape') setEditingBudget(null);
+                            }}
+                            className="w-24 px-2 py-1 text-right border rounded"
+                            autoFocus
+                          />
+                          €
+                        </div>
+                      ) : (
+                        <div
+                          className="cursor-pointer hover:bg-gray-200 px-2 py-1 rounded"
+                          onClick={() => handleBudgetEdit(campaign.id, campaign.totalBudget)}
+                        >
+                          {formatCurrency(campaign.totalBudget)}
+                        </div>
+                      )}
+                    </td>
                     <td className="fixed-cell border-r left-[850px] bg-gray-100">
                       <Select
                         value={campaign.status}

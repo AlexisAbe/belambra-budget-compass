@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,21 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
         return;
       }
       
-      setCampaigns(importedCampaigns as Campaign[]);
-      toast.success(`${importedCampaigns.length} campagnes importées avec succès`);
+      setCampaigns(prevCampaigns => {
+        const existingCampaignNames = new Set(prevCampaigns.map(c => c.campaignName.toLowerCase()));
+        const newCampaigns = importedCampaigns.filter(
+          campaign => !existingCampaignNames.has(campaign.campaignName.toLowerCase())
+        );
+        
+        if (newCampaigns.length === 0) {
+          toast.warning("Toutes les campagnes du fichier existent déjà");
+          return prevCampaigns;
+        }
+        
+        toast.success(`${newCampaigns.length} nouvelles campagnes importées`);
+        return [...prevCampaigns, ...newCampaigns];
+      });
+      
       onClose();
     } catch (error) {
       console.error("Error importing campaigns:", error);
