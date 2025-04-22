@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCampaigns } from '@/context/CampaignContext';
 import { fetchCampaignVersions } from '@/lib/supabaseUtils';
@@ -26,7 +27,7 @@ import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { History } from 'lucide-react';
+import { History, Clock, ArchiveRestore } from 'lucide-react';
 
 interface CampaignVersionsProps {
   campaignId: string;
@@ -91,10 +92,15 @@ const CampaignVersions: React.FC<CampaignVersionsProps> = ({ campaignId, open, o
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader>
-          <DrawerTitle className="text-2xl">Historique des versions</DrawerTitle>
-          <DrawerDescription>
-            Consultez l'historique des modifications de cette campagne et créez des points de sauvegarde.
-          </DrawerDescription>
+          <div className="flex items-center">
+            <Clock className="h-6 w-6 text-sky-500 mr-2" />
+            <div>
+              <DrawerTitle className="text-2xl">Historique des versions</DrawerTitle>
+              <DrawerDescription>
+                Consultez l'historique des modifications de cette campagne et créez des points de sauvegarde.
+              </DrawerDescription>
+            </div>
+          </div>
         </DrawerHeader>
         
         <div className="overflow-y-auto px-4">
@@ -185,7 +191,9 @@ const CampaignVersions: React.FC<CampaignVersionsProps> = ({ campaignId, open, o
                         variant="outline" 
                         size="sm"
                         onClick={() => handleRestoreVersion(version.id)}
+                        className="flex items-center gap-1"
                       >
+                        <ArchiveRestore className="w-4 h-4" />
                         Restaurer
                       </Button>
                     </TableCell>

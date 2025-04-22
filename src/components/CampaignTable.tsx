@@ -5,7 +5,7 @@ import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, History } from "lucide-react";
+import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, History, Clock } from "lucide-react";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 import CampaignVersions from "./CampaignVersions";
@@ -202,6 +202,17 @@ const CampaignTable = () => {
           }}
         />
       )}
+      
+      <div className="bg-sky-50 border border-sky-200 rounded-md p-3 mb-4 flex items-center">
+        <Clock className="w-5 h-5 text-sky-500 mr-2 flex-shrink-0" />
+        <div className="flex-grow">
+          <h3 className="font-medium text-sky-700">Historique et versions des campagnes</h3>
+          <p className="text-sm text-sky-600">
+            Chaque campagne dispose d'un historique de versions. Cliquez sur l'icône <History className="w-4 h-4 inline mx-1" /> 
+            dans la colonne "Actions" pour consulter ou restaurer une version précédente.
+          </p>
+        </div>
+      </div>
 
       <div className="table-container">
         <table className="w-full border-collapse">
@@ -302,10 +313,10 @@ const CampaignTable = () => {
                     <td className="fixed-cell border-r left-[930px] bg-gray-100">
                       <div className="flex gap-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleOpenVersions(campaign.id)}
-                          className="text-gray-600 hover:text-gray-900"
+                          className="text-sky-600 hover:text-sky-900 hover:bg-sky-50 border-sky-200"
                           title="Historique des versions"
                         >
                           <History className="w-4 h-4" />
