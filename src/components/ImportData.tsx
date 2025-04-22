@@ -9,7 +9,6 @@ import { validateImportFile } from "@/lib/import/validateImport";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
-import GoogleSheetsImport from "@/components/GoogleSheetsImport";
 import DataTable from "@/components/DataTable";
 
 type ImportDataProps = {
@@ -128,11 +127,7 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       </div>
       
       <div className="space-y-4">
-        <GoogleSheetsImport onImportSuccess={(data) => {
-          if (data && data.length > 0) {
-            handleImportCampaigns(data);
-          }
-        }} />
+        {/* Suppression du bloc GoogleSheetsImport */}
 
         <div className="border-t border-gray-200 my-4"></div>
 
