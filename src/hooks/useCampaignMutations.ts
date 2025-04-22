@@ -1,4 +1,3 @@
-
 import { Campaign } from "@/types";
 import { saveCampaign, deleteCampaign as deleteSupabaseCampaign, createCampaignVersion } from "@/lib/supabaseUtils";
 import { toast } from "sonner";
@@ -76,13 +75,18 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
   };
 
   const deleteCampaign = async (id: string) => {
-    const success = await deleteSupabaseCampaign(id);
-    
-    if (success) {
-      setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
-      toast.success("Campagne supprimée");
-    } else {
-      toast.error("Erreur lors de la suppression de la campagne");
+    try {
+      const success = await deleteSupabaseCampaign(id);
+      
+      if (success) {
+        setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
+        toast.success("Campagne supprimée");
+      } else {
+        toast.error("Erreur lors de la suppression de la campagne");
+      }
+    } catch (error) {
+      console.error("Error in deleteCampaign:", error);
+      toast.error(`Erreur lors de la suppression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

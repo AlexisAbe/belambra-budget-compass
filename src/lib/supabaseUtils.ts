@@ -194,6 +194,16 @@ export const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
 // Delete a campaign from Supabase
 export const deleteCampaign = async (campaignId: string): Promise<boolean> => {
   try {
+    // Check if the campaign ID is a valid UUID format
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaignId);
+    
+    if (!isValidUUID) {
+      console.log(`Campaign ID ${campaignId} is not a valid UUID format. Deleting from local state only.`);
+      // For non-UUID IDs (like locally-generated or mock data IDs), just return true
+      // so the campaign is removed from the local state
+      return true;
+    }
+
     // Delete the campaign (cascade will delete weekly budgets)
     const { error } = await supabase
       .from('campaigns')
