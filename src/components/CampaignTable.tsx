@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
@@ -5,7 +6,8 @@ import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, History, Clock } from "lucide-react";
+import { Pencil, FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, History, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
 import CampaignVersions from "./CampaignVersions";
@@ -22,6 +24,30 @@ const CampaignTable = () => {
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [editingBudgetValue, setEditingBudgetValue] = useState("");
   const [selectedVersionCampaignId, setSelectedVersionCampaignId] = useState<string | null>(null);
+
+  // NEW: checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const allFilteredChecked = campaigns.length > 0 && campaigns
+    .filter(c => selectedChannel === "all" || c.mediaChannel === selectedChannel)
+    .every(c => selectedIds.includes(c.id));
+  const someSelected = selectedIds.length > 0;
+
+  const handleSelectOne = (campaignId: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, campaignId] : prev.filter((id) => id !== campaignId)
+    );
+  };
+  const handleSelectAll = (checked: boolean) => {
+    const filtered = campaigns.filter(c => selectedChannel === "all" || c.mediaChannel === selectedChannel);
+    setSelectedIds(checked ? filtered.map(c => c.id) : []);
+  };
+
+  const handleDeleteSelected = () => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedIds.length} campagne(s) ?`)) {
+      selectedIds.forEach(deleteCampaign);
+      setSelectedIds([]);
+    }
+  };
 
   const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
@@ -88,6 +114,7 @@ const CampaignTable = () => {
   const handleDelete = (campaignId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) {
       deleteCampaign(campaignId);
+      setSelectedIds(ids => ids.filter(id => id !== campaignId));
     }
   };
 
@@ -115,6 +142,30 @@ const CampaignTable = () => {
     }
     setEditingBudget(null);
   };
+
+  // ---- NEW: Edit campaign info (inline editable cells) ----
+
+  const [editingCampaignField, setEditingCampaignField] = useState<{ campaignId: string; field: string } | null>(null);
+  const [editingFieldValue, setEditingFieldValue] = useState("");
+
+  const startEditCampaignField = (campaignId: string, field: keyof Campaign, currentValue: string) => {
+    setEditingCampaignField({ campaignId, field });
+    setEditingFieldValue(currentValue);
+  };
+  const saveEditCampaignField = (campaign: Campaign, field: keyof Campaign) => {
+    if (editingFieldValue.trim() && editingFieldValue !== (campaign as any)[field]) {
+      updateCampaign({ ...campaign, [field]: editingFieldValue });
+      toast.success(`Champ "${field}" modifié`);
+    }
+    setEditingCampaignField(null);
+    setEditingFieldValue("");
+  };
+  const handleEditCampaignFieldKeyDown = (e: React.KeyboardEvent, campaign: Campaign, field: keyof Campaign) => {
+    if (e.key === "Enter") saveEditCampaignField(campaign, field);
+    if (e.key === "Escape") setEditingCampaignField(null);
+  };
+
+  // ------
 
   const filteredCampaigns = campaigns.filter(campaign => 
     selectedChannel === "all" || campaign.mediaChannel === selectedChannel
@@ -160,6 +211,18 @@ const CampaignTable = () => {
           >
             <Percent className="w-4 h-4" />
             {displayMode === 'amount' ? 'Afficher %' : 'Afficher €'}
+          </Button>
+          {/* NEW: Delete selected */}
+          <Button
+            variant="destructive"
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={handleDeleteSelected}
+            disabled={!someSelected}
+            title="Supprimer les campagnes sélectionnées"
+          >
+            <Trash2 className="w-4 h-4" />
+            {someSelected ? `Supprimer (${selectedIds.length})` : "Supprimer"}
           </Button>
         </div>
         <div className="flex space-x-2">
@@ -214,10 +277,18 @@ const CampaignTable = () => {
         </div>
       </div>
 
-      <div className="table-container">
+      <div className="table-container overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
+              {/* Checkbox header */}
+              <th className="header-cell w-8 sticky left-0 bg-white z-30">
+                <Checkbox
+                  checked={allFilteredChecked}
+                  indeterminate={!allFilteredChecked && someSelected}
+                  onCheckedChange={(value: any) => handleSelectAll(!!value)}
+                />
+              </th>
               <th className="header-cell fixed-cell z-20 min-w-[160px]">Levier Média</th>
               <th className="header-cell fixed-cell z-20 left-[160px] min-w-[180px]">Nom Campagne</th>
               <th className="header-cell fixed-cell z-20 left-[340px] min-w-[140px]">Objectif</th>
@@ -246,11 +317,137 @@ const CampaignTable = () => {
               return (
                 <React.Fragment key={campaign.id}>
                   <tr>
-                    <td className="fixed-cell border-r left-0 bg-gray-100">{campaign.mediaChannel}</td>
-                    <td className="fixed-cell border-r left-[160px] bg-gray-100">{campaign.campaignName}</td>
-                    <td className="fixed-cell border-r left-[340px] bg-gray-100">{campaign.marketingObjective}</td>
-                    <td className="fixed-cell border-r left-[480px] bg-gray-100 text-xs">{campaign.targetAudience}</td>
-                    <td className="fixed-cell border-r left-[610px] bg-gray-100">{campaign.startDate}</td>
+                    {/* Checkbox cell */}
+                    <td className="sticky left-0 z-20 bg-white border-r">
+                      <Checkbox
+                        checked={selectedIds.includes(campaign.id)}
+                        onCheckedChange={(value: any) =>
+                          handleSelectOne(campaign.id, !!value)
+                        }
+                        aria-label="Sélectionner cette campagne"
+                      />
+                    </td>
+                    {/* Editable cells */}
+                    <td className="fixed-cell border-r left-0 bg-gray-100">
+                      {/* Media channel non editable */}
+                      {campaign.mediaChannel}
+                    </td>
+                    <td className="fixed-cell border-r left-[160px] bg-gray-100">
+                      {editingCampaignField && editingCampaignField.campaignId === campaign.id && editingCampaignField.field === "campaignName" ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editingFieldValue}
+                            onChange={(e) => setEditingFieldValue(e.target.value)}
+                            onBlur={() => saveEditCampaignField(campaign, "campaignName")}
+                            onKeyDown={(e) => handleEditCampaignFieldKeyDown(e, campaign, "campaignName")}
+                            className="border rounded px-2 py-1 w-full"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center group">
+                          <span
+                            className="truncate cursor-pointer w-full"
+                            onDoubleClick={() => startEditCampaignField(campaign.id, "campaignName", campaign.campaignName)}
+                          >
+                            {campaign.campaignName}
+                          </span>
+                          <Pencil
+                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            onClick={() => startEditCampaignField(campaign.id, "campaignName", campaign.campaignName)}
+                            title="Modifier le nom"
+                          />
+                        </div>
+                      )}
+                    </td>
+                    <td className="fixed-cell border-r left-[340px] bg-gray-100">
+                      {editingCampaignField && editingCampaignField.campaignId === campaign.id && editingCampaignField.field === "marketingObjective" ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editingFieldValue}
+                            onChange={(e) => setEditingFieldValue(e.target.value)}
+                            onBlur={() => saveEditCampaignField(campaign, "marketingObjective")}
+                            onKeyDown={(e) => handleEditCampaignFieldKeyDown(e, campaign, "marketingObjective")}
+                            className="border rounded px-2 py-1 w-full"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center group">
+                          <span
+                            className="truncate cursor-pointer w-full"
+                            onDoubleClick={() => startEditCampaignField(campaign.id, "marketingObjective", campaign.marketingObjective)}
+                          >
+                            {campaign.marketingObjective}
+                          </span>
+                          <Pencil
+                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            onClick={() => startEditCampaignField(campaign.id, "marketingObjective", campaign.marketingObjective)}
+                            title="Modifier l'objectif"
+                          />
+                        </div>
+                      )}
+                    </td>
+                    <td className="fixed-cell border-r left-[480px] bg-gray-100 text-xs">
+                      {editingCampaignField && editingCampaignField.campaignId === campaign.id && editingCampaignField.field === "targetAudience" ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editingFieldValue}
+                            onChange={(e) => setEditingFieldValue(e.target.value)}
+                            onBlur={() => saveEditCampaignField(campaign, "targetAudience")}
+                            onKeyDown={(e) => handleEditCampaignFieldKeyDown(e, campaign, "targetAudience")}
+                            className="border rounded px-2 py-1 w-full"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center group">
+                          <span
+                            className="truncate cursor-pointer w-full"
+                            onDoubleClick={() => startEditCampaignField(campaign.id, "targetAudience", campaign.targetAudience)}
+                          >
+                            {campaign.targetAudience}
+                          </span>
+                          <Pencil
+                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            onClick={() => startEditCampaignField(campaign.id, "targetAudience", campaign.targetAudience)}
+                            title="Modifier la cible"
+                          />
+                        </div>
+                      )}
+                    </td>
+                    <td className="fixed-cell border-r left-[610px] bg-gray-100">
+                      {editingCampaignField && editingCampaignField.campaignId === campaign.id && editingCampaignField.field === "startDate" ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="date"
+                            value={editingFieldValue}
+                            onChange={(e) => setEditingFieldValue(e.target.value)}
+                            onBlur={() => saveEditCampaignField(campaign, "startDate")}
+                            onKeyDown={(e) => handleEditCampaignFieldKeyDown(e, campaign, "startDate")}
+                            className="border rounded px-2 py-1 w-full"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center group">
+                          <span
+                            className="truncate cursor-pointer w-full"
+                            onDoubleClick={() => startEditCampaignField(campaign.id, "startDate", campaign.startDate)}
+                          >
+                            {campaign.startDate}
+                          </span>
+                          <Pencil
+                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            onClick={() => startEditCampaignField(campaign.id, "startDate", campaign.startDate)}
+                            title="Modifier la date"
+                          />
+                        </div>
+                      )}
+                    </td>
                     <td className="fixed-cell border-r left-[720px] bg-gray-100 text-right">
                       {editingBudget === campaign.id ? (
                         <div className="flex items-center gap-1">
@@ -270,10 +467,18 @@ const CampaignTable = () => {
                         </div>
                       ) : (
                         <div
-                          className="cursor-pointer hover:bg-gray-200 px-2 py-1 rounded"
+                          className="cursor-pointer hover:bg-gray-200 px-2 py-1 rounded group flex items-center"
                           onClick={() => handleBudgetEdit(campaign.id, campaign.totalBudget)}
                         >
                           {formatCurrency(campaign.totalBudget)}
+                          <Pencil
+                            className="ml-1 w-4 h-4 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBudgetEdit(campaign.id, campaign.totalBudget);
+                            }}
+                            title="Modifier le budget"
+                          />
                         </div>
                       )}
                     </td>
@@ -436,7 +641,8 @@ const CampaignTable = () => {
       </div>
       <div className="mt-2 text-xs text-gray-500">
         <div className="flex flex-wrap gap-4">
-          <span>* Cliquez sur une cellule pour modifier le montant</span>
+          <span>* Cliquez sur une cellule ou l’icône <Pencil className="inline align-text-bottom w-3 h-3" /> pour modifier les éléments de campagne.</span>
+          <span>* Cochez pour sélectionner une ou plusieurs campagnes puis cliquez sur "Supprimer".</span>
           <span>* <span className="bg-blue-50 px-1 rounded">Bleu</span>: Budget prévu {displayMode === 'percentage' && '(%)' || '(€)'}</span>
           <span>* <span className="bg-green-50 px-1 rounded">Vert</span>: Budget réel</span>
           <span>* Valeurs en <span className="text-red-500">rouge</span>: dépassement</span>
