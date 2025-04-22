@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useCampaigns } from "@/context/CampaignContext";
 import { CampaignStatus } from "@/types";
-import { Form, Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
 import {
   MediaChannelField,
 } from "./CampaignForm/MediaChannelField";
@@ -25,6 +26,7 @@ import {
   FormActions,
 } from "./CampaignForm/FormActions";
 import { useDynamicObjectives } from "./CampaignForm/useDynamicObjectives";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const formSchema = z.object({
   mediaChannel: z.string().min(1, "Le levier média est requis"),
@@ -136,17 +138,17 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onCancel, campaign }) => {
                 control={form.control}
                 name="campaignName"
                 render={({ field }) => (
-                  <div>
-                    {/* Nom de la campagne */}
-                    <label className="block font-medium mb-1">
-                      Nom de la Campagne
-                    </label>
-                    <input
-                      className="input w-full"
-                      placeholder="Ex: Été Famille 2025"
-                      {...field}
-                    />
-                  </div>
+                  <FormItem>
+                    <FormLabel>Nom de la Campagne</FormLabel>
+                    <FormControl>
+                      <input
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                        placeholder="Ex: Été Famille 2025"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
               />
               <MarketingObjectiveField
