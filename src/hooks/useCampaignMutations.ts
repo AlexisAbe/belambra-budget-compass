@@ -37,17 +37,41 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
   };
 
   const updateCampaign = async (updatedCampaign: Campaign) => {
-    const success = await saveCampaign(updatedCampaign);
-    
-    if (success) {
-      setCampaigns(prev => 
-        prev.map(campaign => 
-          campaign.id === updatedCampaign.id ? updatedCampaign : campaign
-        )
-      );
-      toast.success("Campagne mise à jour");
-    } else {
-      toast.error("Erreur lors de la mise à jour de la campagne");
+    try {
+      // Create a deep copy to ensure we're not modifying the original object
+      const campaignToUpdate = JSON.parse(JSON.stringify(updatedCampaign)) as Campaign;
+      
+      // Make sure weeklyBudgetPercentages exists
+      if (!campaignToUpdate.weeklyBudgetPercentages) {
+        campaignToUpdate.weeklyBudgetPercentages = {};
+      }
+      
+      // Make sure percentages add up to 100% (or close enough)
+      const totalPercentage = Object.values(campaignToUpdate.weeklyBudgetPercentages).reduce((sum, val) => sum + val, 0);
+      if (totalPercentage > 0 && Math.abs(totalPercentage - 100) > 0.1) {
+        console.warn(`Total percentage is ${totalPercentage}%, normalizing to 100%`);
+        // Normalize percentages to sum to 100%
+        Object.keys(campaignToUpdate.weeklyBudgetPercentages).forEach(week => {
+          campaignToUpdate.weeklyBudgetPercentages[week] = 
+            (campaignToUpdate.weeklyBudgetPercentages[week] / totalPercentage) * 100;
+        });
+      }
+      
+      const success = await saveCampaign(campaignToUpdate);
+      
+      if (success) {
+        setCampaigns(prev => 
+          prev.map(campaign => 
+            campaign.id === campaignToUpdate.id ? campaignToUpdate : campaign
+          )
+        );
+        toast.success("Campagne mise à jour");
+      } else {
+        toast.error("Erreur lors de la mise à jour de la campagne");
+      }
+    } catch (error) {
+      console.error("Error updating campaign:", error);
+      toast.error(`Erreur lors de la mise à jour de la campagne: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 

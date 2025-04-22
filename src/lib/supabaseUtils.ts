@@ -116,34 +116,55 @@ export const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
   try {
     const { campaignData, weeklyBudgets } = convertFromCampaign(campaign);
     
-    if (campaign.id) {
-      // Update existing campaign
-      const { error: updateError } = await supabase
-        .from('campaigns')
-        .update(campaignData)
-        .eq('id', campaign.id);
-        
-      if (updateError) throw updateError;
-      
-      // First delete existing weekly budgets for this campaign
-      const { error: deleteError } = await supabase
-        .from('weekly_budgets')
-        .delete()
-        .eq('campaign_id', campaign.id);
-        
-      if (deleteError) throw deleteError;
-    } else {
-      // Insert new campaign
+    // Validate campaign ID
+    if (!campaign.id) {
+      console.error('Error: Campaign ID is missing');
+      return false;
+    }
+
+    // Check if the ID is a valid UUID format (if it was generated client-side)
+    if (campaign.id.startsWith('imported-')) {
+      // For imported campaigns, we need to create a new record
       const { data: newCampaign, error: insertError } = await supabase
         .from('campaigns')
         .insert(campaignData)
         .select('id')
         .single();
         
-      if (insertError) throw insertError;
-      if (!newCampaign) throw new Error('Failed to create new campaign');
+      if (insertError) {
+        console.error('Error inserting campaign:', insertError);
+        throw insertError;
+      }
       
+      if (!newCampaign) {
+        console.error('Failed to create new campaign - no data returned');
+        throw new Error('Failed to create new campaign');
+      }
+      
+      // Update the ID to the new server-generated one
       campaign.id = newCampaign.id;
+    } else {
+      // Update existing campaign
+      const { error: updateError } = await supabase
+        .from('campaigns')
+        .update(campaignData)
+        .eq('id', campaign.id);
+        
+      if (updateError) {
+        console.error('Error updating campaign:', updateError);
+        throw updateError;
+      }
+      
+      // Delete existing weekly budgets for this campaign
+      const { error: deleteError } = await supabase
+        .from('weekly_budgets')
+        .delete()
+        .eq('campaign_id', campaign.id);
+        
+      if (deleteError) {
+        console.error('Error deleting weekly budgets:', deleteError);
+        throw deleteError;
+      }
     }
     
     // Insert weekly budgets
@@ -157,7 +178,10 @@ export const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
         .from('weekly_budgets')
         .insert(weeklyBudgetsWithCampaignId);
         
-      if (budgetError) throw budgetError;
+      if (budgetError) {
+        console.error('Error inserting weekly budgets:', budgetError);
+        throw budgetError;
+      }
     }
     
     return true;
