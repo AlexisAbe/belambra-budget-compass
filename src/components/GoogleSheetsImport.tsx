@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Info, AlertCircle } from "lucide-react";
+import { Info, AlertCircle, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GoogleSheetsImportProps {
   onImportSuccess: (data: any[]) => void;
@@ -15,13 +16,14 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
   const [spreadsheetUrl, setSpreadsheetUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailedError, setDetailedError] = useState<string | null>(null);
 
   const extractSpreadsheetId = (url: string): string | null => {
     // Handle different Google Sheet URL formats
     const patterns = [
       /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,        // Standard format
       /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)\/edit/,  // Edit URL
-      /^([a-zA-Z0-9-_]{25,})/                      // Just the ID
+      /^([a-zA-Z0-9-_]{25,})/                       // Just the ID
     ];
 
     for (const pattern of patterns) {
@@ -38,6 +40,7 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
     try {
       setIsLoading(true);
       setError(null);
+      setDetailedError(null);
       
       const spreadsheetId = extractSpreadsheetId(spreadsheetUrl.trim());
       
@@ -46,17 +49,21 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         return;
       }
 
-      console.log(`Importing Google Sheet with ID: ${spreadsheetId}`);
+      console.log(`Tentative d'importation de Google Sheet avec ID: ${spreadsheetId}`);
+      
+      // Specify Sheet1 and a large range to cover most use cases
+      const range = 'Sheet1!A1:Z1000';
+      console.log(`Utilisation de la plage: ${range}`);
       
       const { data, error: functionError } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId,
-          range: 'Sheet1!A1:Z1000' // Specify the sheet name explicitly
+          range
         }
       });
 
       if (functionError) {
-        console.error('Function error:', functionError);
+        console.error('Erreur de fonction:', functionError);
         setError(`Erreur de la fonction: ${functionError.message || 'Erreur inconnue'}`);
         return;
       }
@@ -67,8 +74,10 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
       }
 
       if (data.error) {
-        console.error('API error:', data.error);
+        console.error('Erreur API:', data.error);
+        console.error('Détails:', data.details);
         setError(data.error);
+        setDetailedError(data.details);
         return;
       }
 
@@ -77,14 +86,14 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         return;
       }
 
-      console.log('Imported data:', data.data);
+      console.log('Données importées:', data.data);
       
       onImportSuccess(data.data);
       toast.success(`${data.data.length} campagnes importées avec succès`);
       setSpreadsheetUrl('');
       
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('Erreur lors de l\'importation:', error);
       setError(`Erreur lors de l'importation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setIsLoading(false);
@@ -93,15 +102,29 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
 
   return (
     <div className="flex flex-col gap-4 p-4 border rounded-lg">
-      <h3 className="text-lg font-semibold">Importer depuis Google Sheets</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Importer depuis Google Sheets</h3>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <HelpCircle className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-md">
+              <p>Assurez-vous que votre feuille est nommée "Sheet1" et contient des en-têtes dans la première ligne. Si vous avez des problèmes, vérifiez que l'API key est configurée correctement dans Supabase.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       
       <Alert variant="default" className="bg-blue-50 text-blue-800 border-blue-200">
         <Info className="h-4 w-4" />
-        <AlertTitle>Instructions</AlertTitle>
+        <AlertTitle>Instructions importantes</AlertTitle>
         <AlertDescription className="text-sm">
           <p>1. <strong>Partagez</strong> votre Google Sheet avec le paramètre "Toute personne avec le lien peut voir".</p>
-          <p>2. Votre feuille doit contenir une ligne d'en-tête avec les noms des colonnes (ex: Levier Média, Nom Campagne, etc.)</p>
-          <p>3. Par défaut, nous utilisons la feuille "Sheet1". Contactez-nous si vous utilisez un nom différent.</p>
+          <p>2. <strong>Le nom de votre feuille</strong> DOIT être "Sheet1" (nom par défaut).</p>
+          <p>3. <strong>La première ligne</strong> doit contenir des en-têtes avec les noms des colonnes.</p>
           <p>4. Collez l'URL complète du Google Sheet ci-dessous.</p>
         </AlertDescription>
       </Alert>
@@ -126,13 +149,27 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         <Alert variant="destructive" className="mt-2">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erreur d'importation</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            <p>{error}</p>
+            {detailedError && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm font-medium">Voir les détails techniques</summary>
+                <p className="mt-1 text-xs border-l-2 border-red-300 pl-2">{detailedError}</p>
+              </details>
+            )}
+          </AlertDescription>
         </Alert>
       )}
       
-      <p className="text-sm text-gray-500">
-        Format attendu: colonnes correspondant aux champs de campagne (Levier Média, Nom Campagne, etc.)
-      </p>
+      <div className="border-t pt-3 mt-2">
+        <h4 className="text-sm font-medium mb-1">Conseils de dépannage:</h4>
+        <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
+          <li>Vérifiez que votre feuille est bien partagée avec "Toute personne avec le lien peut voir"</li>
+          <li>Le nom de la feuille DOIT être "Sheet1" (vérifiez l'onglet en bas de votre feuille)</li>
+          <li>Assurez-vous que la clé API Google Sheets est correctement configurée</li>
+          <li>La feuille doit contenir une ligne d'en-tête avec des noms comme: Levier Média, Nom Campagne, etc.</li>
+        </ul>
+      </div>
     </div>
   );
 };
