@@ -20,16 +20,41 @@ serve(async (req: Request) => {
     const { spreadsheetId, range } = await req.json();
     const SHEETS_API_KEY = Deno.env.get('GOOGLE_SHEETS_API_KEY');
 
-    if (!spreadsheetId || !range) {
-      throw new Error('Spreadsheet ID and range are required');
+    // Enhanced validation
+    if (!spreadsheetId) {
+      console.error('Spreadsheet ID is missing');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Spreadsheet ID is required',
+          errorType: 'ValidationError'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    // Vérification plus stricte de la clé API
+    if (!range) {
+      console.error('Range is missing');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Sheet range is required',
+          errorType: 'ValidationError'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // More strict API key validation
     if (!SHEETS_API_KEY || SHEETS_API_KEY.trim() === '') {
       console.error('Google Sheets API Key is missing or empty');
       return new Response(
         JSON.stringify({ 
-          error: 'Configuration error: Google Sheets API Key is not configured correctly',
+          error: 'Google Sheets API Key is not configured',
           errorType: 'ConfigurationError'
         }),
         { 
@@ -39,39 +64,43 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Fetching data from spreadsheet: ${spreadsheetId}, range: ${range}`);
+    console.log(`Attempting to fetch data from spreadsheet: ${spreadsheetId}, range: ${range}`);
 
-    // Make sure the sheet is accessible to "anyone with the link" or "public"
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${SHEETS_API_KEY}`;
-    console.log(`API URL: ${url.replace(SHEETS_API_KEY, 'API_KEY_HIDDEN')}`); // Masquer la clé dans les logs
-
-    const response = await fetch(url);
-    const responseStatus = response.status;
-    const responseStatusText = response.statusText;
     
+    const response = await fetch(url);
+    
+    // Log full response details for debugging
+    console.log(`Response status: ${response.status}, ${response.statusText}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Google Sheets API error: ${responseStatus} ${responseStatusText}, Details: ${errorText}`);
+      console.error(`Google Sheets API error details: ${errorText}`);
       
-      // Messages d'erreur personnalisés selon le code d'erreur
-      let userMessage = `Google Sheets API error: Status ${responseStatus} - ${responseStatusText}`;
+      // More detailed error handling
+      let userMessage = `Google Sheets API error: Status ${response.status}`;
       
-      if (responseStatus === 403) {
-        userMessage = "Accès refusé au Google Sheet. Assurez-vous que le document est partagé avec 'Quiconque ayant le lien' peut le consulter.";
-      } else if (responseStatus === 404) {
-        userMessage = "Google Sheet introuvable. Vérifiez l'URL et assurez-vous que le document existe.";
-      } else if (responseStatus === 400 && errorText.includes("API_KEY_INVALID")) {
-        userMessage = "La clé API Google Sheets n'est pas valide. Veuillez contacter l'administrateur.";
+      switch (response.status) {
+        case 403:
+          userMessage = "Accès refusé. Vérifiez que le document est partagé publiquement et que la clé API est valide.";
+          break;
+        case 404:
+          userMessage = "Feuille de calcul introuvable. Vérifiez l'URL et l'ID de la feuille.";
+          break;
+        case 400:
+          userMessage = "Requête invalide. Vérifiez l'URL et les paramètres.";
+          break;
       }
-      
+
       return new Response(
         JSON.stringify({ 
           error: userMessage,
           errorType: 'APIError',
-          status: responseStatus
+          status: response.status,
+          details: errorText
         }),
         { 
-          status: 400, 
+          status: response.status, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -80,9 +109,10 @@ serve(async (req: Request) => {
     const data: SheetResponse = await response.json();
     
     if (!data.values || data.values.length === 0) {
+      console.warn('No data found in the specified range');
       return new Response(
         JSON.stringify({ 
-          error: 'No data found in the specified range',
+          error: 'Aucune donnée trouvée dans la plage spécifiée',
           errorType: 'NoDataError'
         }),
         { 
@@ -92,37 +122,17 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Found ${data.values.length} rows of data (including header)`);
-    
-    // Process the data to match our campaign format
+    // Process data as before
     const [headers, ...rows] = data.values;
     
-    console.log('Headers:', headers);
-    console.log(`Processing ${rows.length} data rows`);
-
-    if (rows.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Aucune donnée trouvée dans la feuille (seulement des en-têtes)',
-          errorType: 'EmptyDataError'
-        }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     const processedData = rows.map((row, index) => {
       const campaign: Record<string, any> = {
         id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       };
       
       headers.forEach((header: string, idx: number) => {
-        // Handle common field mapping issues
         let fieldName = header.trim();
         
-        // Map French column names to our expected field names if needed
         const fieldMappings: Record<string, string> = {
           "Levier Média": "mediaChannel",
           "Média": "mediaChannel",
@@ -150,7 +160,6 @@ serve(async (req: Request) => {
           fieldName = fieldMappings[fieldName];
         }
         
-        // Handle empty or missing values
         const value = row[idx] !== undefined ? row[idx] : '';
         campaign[fieldName] = value;
       });
@@ -165,7 +174,6 @@ serve(async (req: Request) => {
       if (!campaign.durationDays) campaign.durationDays = 30;
       if (!campaign.status) campaign.status = "ACTIVE";
       
-      // Initialize empty budget objects
       campaign.weeklyBudgetPercentages = {};
       campaign.weeklyBudgets = {};
       campaign.weeklyActuals = {};
@@ -180,14 +188,16 @@ serve(async (req: Request) => {
     });
 
   } catch (error) {
-    console.error('Function error:', error);
+    console.error('Unexpected error in function:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message,
-      errorType: error.name || 'Error'
+      error: 'Une erreur inattendue est survenue',
+      errorType: 'UnexpectedError',
+      details: error.message
     }), {
-      status: 400,
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
