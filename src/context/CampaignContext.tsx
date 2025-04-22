@@ -1,7 +1,14 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { Campaign, BudgetSummary, ChannelSummary, ObjectiveSummary } from "@/types";
-import { getInitialCampaigns, weeks } from "@/services/mockData";
+import { weeks } from "@/services/mockData";
 import { toast } from "sonner";
+import { 
+  fetchCampaigns, 
+  saveCampaign, 
+  deleteCampaign as deleteSupabaseCampaign,
+  createCampaignVersion
+} from "@/lib/supabaseUtils";
+import { getInitialCampaigns } from "@/services/mockData";
 
 interface CampaignContextType {
   campaigns: Campaign[];
@@ -17,6 +24,8 @@ interface CampaignContextType {
   getObjectiveSummaries: () => ObjectiveSummary[];
   currentWeek: string;
   resetToMockData: () => void;
+  createVersion: (campaignId: string, versionName: string, versionNotes?: string) => Promise<boolean>;
+  loading: boolean;
 }
 
 const CampaignContext = createContext<CampaignContextType | null>(null);
@@ -24,10 +33,33 @@ const CampaignContext = createContext<CampaignContextType | null>(null);
 export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [currentWeek, setCurrentWeek] = useState("S12"); // Assume we're in week 12 of 2025
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial data
-    setCampaigns(getInitialCampaigns());
+    // Load data from Supabase
+    const loadCampaigns = async () => {
+      try {
+        setLoading(true);
+        const supabaseCampaigns = await fetchCampaigns();
+        
+        if (supabaseCampaigns.length > 0) {
+          setCampaigns(supabaseCampaigns);
+          toast.success("Données chargées depuis Supabase");
+        } else {
+          // If no campaigns in Supabase, load mock data
+          setCampaigns(getInitialCampaigns());
+          toast.info("Données de démonstration chargées");
+        }
+      } catch (error) {
+        console.error("Error loading campaigns:", error);
+        setCampaigns(getInitialCampaigns());
+        toast.error("Erreur lors du chargement des données, utilisation des données de démonstration");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCampaigns();
   }, []);
 
   const resetToMockData = () => {
@@ -35,8 +67,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     toast.success("Données réinitialisées");
   };
 
-  const addCampaign = (newCampaign: Omit<Campaign, "id" | "weeklyBudgets" | "weeklyActuals">) => {
-    const id = Date.now().toString();
+  const addCampaign = async (newCampaign: Omit<Campaign, "id" | "weeklyBudgets" | "weeklyActuals">) => {
     const weeklyBudgets: Record<string, number> = {};
     const weeklyActuals: Record<string, number> = {};
     const weeklyBudgetPercentages: Record<string, number> = {};
@@ -48,33 +79,52 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       weeklyBudgetPercentages[week] = 0;
     });
     
-    setCampaigns(prev => [
-      ...prev,
-      {
-        ...newCampaign,
-        id,
-        status: 'ACTIVE', // Set default status
-        weeklyBudgets,
-        weeklyActuals,
-        weeklyBudgetPercentages
-      }
-    ]);
+    const campaignWithBudgets: Campaign = {
+      ...newCampaign,
+      id: "",
+      status: 'ACTIVE', // Set default status
+      weeklyBudgets,
+      weeklyActuals,
+      weeklyBudgetPercentages
+    };
     
-    toast.success("Nouvelle campagne ajoutée");
+    // Save to Supabase
+    const success = await saveCampaign(campaignWithBudgets);
+    
+    if (success) {
+      setCampaigns(prev => [...prev, campaignWithBudgets]);
+      toast.success("Nouvelle campagne ajoutée");
+    } else {
+      toast.error("Erreur lors de l'ajout de la campagne");
+    }
   };
 
-  const updateCampaign = (updatedCampaign: Campaign) => {
-    setCampaigns(prev => 
-      prev.map(campaign => 
-        campaign.id === updatedCampaign.id ? updatedCampaign : campaign
-      )
-    );
-    toast.success("Campagne mise à jour");
+  const updateCampaign = async (updatedCampaign: Campaign) => {
+    // Save to Supabase
+    const success = await saveCampaign(updatedCampaign);
+    
+    if (success) {
+      setCampaigns(prev => 
+        prev.map(campaign => 
+          campaign.id === updatedCampaign.id ? updatedCampaign : campaign
+        )
+      );
+      toast.success("Campagne mise à jour");
+    } else {
+      toast.error("Erreur lors de la mise à jour de la campagne");
+    }
   };
 
-  const deleteCampaign = (id: string) => {
-    setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
-    toast.success("Campagne supprimée");
+  const deleteCampaign = async (id: string) => {
+    // Delete from Supabase
+    const success = await deleteSupabaseCampaign(id);
+    
+    if (success) {
+      setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
+      toast.success("Campagne supprimée");
+    } else {
+      toast.error("Erreur lors de la suppression de la campagne");
+    }
   };
 
   const updateWeeklyBudget = (campaignId: string, week: string, amount: number) => {
@@ -93,11 +143,20 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             newPercentages[week] = (amount / campaign.totalBudget) * 100;
           }
           
-          return {
+          const updatedCampaign = {
             ...campaign,
             weeklyBudgets: newBudgets,
             weeklyBudgetPercentages: newPercentages
           };
+          
+          // Debounced save to Supabase
+          const timer = setTimeout(() => {
+            saveCampaign(updatedCampaign).catch(err => 
+              console.error("Error saving budget update:", err)
+            );
+          }, 1000);
+          
+          return updatedCampaign;
         }
         return campaign;
       })
@@ -108,13 +167,22 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCampaigns(prev => 
       prev.map(campaign => {
         if (campaign.id === campaignId) {
-          return {
+          const updatedCampaign = {
             ...campaign,
             weeklyActuals: {
               ...campaign.weeklyActuals,
               [week]: amount
             }
           };
+          
+          // Debounced save to Supabase
+          const timer = setTimeout(() => {
+            saveCampaign(updatedCampaign).catch(err => 
+              console.error("Error saving actual update:", err)
+            );
+          }, 1000);
+          
+          return updatedCampaign;
         }
         return campaign;
       })
@@ -146,15 +214,36 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const newBudgets = { ...campaign.weeklyBudgets };
           newBudgets[week] = (percentage / 100) * campaign.totalBudget;
           
-          return {
+          const updatedCampaign = {
             ...campaign,
             weeklyBudgetPercentages: newPercentages,
             weeklyBudgets: newBudgets
           };
+          
+          // Debounced save to Supabase
+          const timer = setTimeout(() => {
+            saveCampaign(updatedCampaign).catch(err => 
+              console.error("Error saving percentage update:", err)
+            );
+          }, 1000);
+          
+          return updatedCampaign;
         }
         return campaign;
       })
     );
+  };
+
+  const createVersion = async (campaignId: string, versionName: string, versionNotes?: string): Promise<boolean> => {
+    const success = await createCampaignVersion(campaignId, versionName, versionNotes);
+    
+    if (success) {
+      toast.success(`Version "${versionName}" créée avec succès`);
+    } else {
+      toast.error("Erreur lors de la création de la version");
+    }
+    
+    return success;
   };
 
   const getBudgetSummary = (): BudgetSummary => {
@@ -265,7 +354,9 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         getChannelSummaries,
         getObjectiveSummaries,
         currentWeek,
-        resetToMockData
+        resetToMockData,
+        createVersion,
+        loading
       }}
     >
       {children}

@@ -1,3 +1,4 @@
+
 export interface Campaign {
   id: string;
   mediaChannel: string;
@@ -73,3 +74,25 @@ export const BELAMBRA_COLORS = {
 };
 
 export type CampaignStatus = 'ACTIVE' | 'PAUSED' | 'DELETED';
+
+// Add conversion function to map from Database model to our application model
+export interface SupabaseCampaign {
+  id: string;
+  media_channel: string;
+  campaign_name: string;
+  marketing_objective: string;
+  target_audience: string;
+  start_date: string;
+  total_budget: number;
+  duration_days: number;
+  status: string;
+}
+
+export interface SupabaseWeeklyBudget {
+  id: string;
+  campaign_id: string;
+  week: string;
+  planned_amount: number;
+  actual_amount: number | null;
+  percentage: number | null;
+}

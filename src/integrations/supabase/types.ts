@@ -9,7 +9,189 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      campaign_versions: {
+        Row: {
+          campaign_id: string
+          campaign_name: string
+          duration_days: number
+          id: string
+          marketing_objective: string
+          media_channel: string
+          start_date: string
+          status: string
+          target_audience: string
+          total_budget: number
+          user_id: string | null
+          version_date: string
+          version_name: string | null
+          version_notes: string | null
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name: string
+          duration_days: number
+          id?: string
+          marketing_objective: string
+          media_channel: string
+          start_date: string
+          status: string
+          target_audience: string
+          total_budget: number
+          user_id?: string | null
+          version_date?: string
+          version_name?: string | null
+          version_notes?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string
+          duration_days?: number
+          id?: string
+          marketing_objective?: string
+          media_channel?: string
+          start_date?: string
+          status?: string
+          target_audience?: string
+          total_budget?: number
+          user_id?: string | null
+          version_date?: string
+          version_name?: string | null
+          version_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_versions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          campaign_name: string
+          created_at: string
+          duration_days: number
+          id: string
+          marketing_objective: string
+          media_channel: string
+          start_date: string
+          status: string
+          target_audience: string
+          total_budget: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign_name: string
+          created_at?: string
+          duration_days: number
+          id?: string
+          marketing_objective: string
+          media_channel: string
+          start_date: string
+          status: string
+          target_audience: string
+          total_budget: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          created_at?: string
+          duration_days?: number
+          id?: string
+          marketing_objective?: string
+          media_channel?: string
+          start_date?: string
+          status?: string
+          target_audience?: string
+          total_budget?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      weekly_budget_versions: {
+        Row: {
+          actual_amount: number | null
+          campaign_version_id: string
+          id: string
+          percentage: number | null
+          planned_amount: number
+          version_date: string
+          week: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          campaign_version_id: string
+          id?: string
+          percentage?: number | null
+          planned_amount?: number
+          version_date?: string
+          week: string
+        }
+        Update: {
+          actual_amount?: number | null
+          campaign_version_id?: string
+          id?: string
+          percentage?: number | null
+          planned_amount?: number
+          version_date?: string
+          week?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_budget_versions_campaign_version_id_fkey"
+            columns: ["campaign_version_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_budgets: {
+        Row: {
+          actual_amount: number | null
+          campaign_id: string
+          created_at: string
+          id: string
+          percentage: number | null
+          planned_amount: number
+          updated_at: string
+          week: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          planned_amount?: number
+          updated_at?: string
+          week: string
+        }
+        Update: {
+          actual_amount?: number | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          planned_amount?: number
+          updated_at?: string
+          week?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_budgets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
