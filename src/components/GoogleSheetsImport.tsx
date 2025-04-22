@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Info, AlertCircle, HelpCircle } from "lucide-react";
+import { Info, AlertCircle, HelpCircle, ExternalLink } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GoogleSheetsImportProps {
@@ -42,10 +42,14 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
       setError(null);
       setDetailedError(null);
       
+      // Log the URL for debugging
+      console.log("URL saisie:", spreadsheetUrl);
+      
       const spreadsheetId = extractSpreadsheetId(spreadsheetUrl.trim());
       
       if (!spreadsheetId) {
         setError("URL de Google Sheets invalide. Assurez-vous de copier l'URL complète du document.");
+        setIsLoading(false);
         return;
       }
 
@@ -55,7 +59,7 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
       const range = 'Sheet1!A1:Z1000';
       console.log(`Utilisation de la plage: ${range}`);
       
-      const { data, error: functionError } = await supabase.functions.invoke('google-sheets', {
+      const { data: responseData, error: functionError } = await supabase.functions.invoke('google-sheets', {
         body: {
           spreadsheetId,
           range
@@ -65,31 +69,50 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
       if (functionError) {
         console.error('Erreur de fonction:', functionError);
         setError(`Erreur de la fonction: ${functionError.message || 'Erreur inconnue'}`);
+        setIsLoading(false);
         return;
       }
 
-      if (!data) {
-        setError("Aucune donnée n'a été retournée. Vérifiez que votre feuille est accessible et qu'elle contient des données.");
+      console.log('Réponse complète de la fonction:', responseData);
+
+      if (!responseData) {
+        setError("Aucune réponse n'a été retournée par la fonction. Vérifiez les logs de la fonction pour plus de détails.");
+        setIsLoading(false);
         return;
       }
 
-      if (data.error) {
-        console.error('Erreur API:', data.error);
-        console.error('Détails:', data.details);
-        setError(data.error);
-        setDetailedError(data.details);
+      if (responseData.error) {
+        console.error('Erreur API:', responseData.error);
+        console.error('Détails:', responseData.details);
+        
+        // Créer un message d'erreur plus convivial basé sur la réponse
+        let userMessage = responseData.error;
+        
+        // Ajoutez des conseils utiles basés sur l'erreur
+        if (responseData.status === 403) {
+          userMessage = "Accès refusé. Assurez-vous que votre feuille est partagée avec le paramètre 'Toute personne avec le lien peut voir'.";
+        } else if (responseData.status === 404) {
+          userMessage = "Feuille introuvable. Vérifiez que l'URL est correcte et que la feuille 'Sheet1' existe.";
+        } else if (responseData.error.includes("API key")) {
+          userMessage = "Problème de clé API. Vérifiez que la clé Google Sheets API est correctement configurée dans les secrets Supabase.";
+        }
+        
+        setError(userMessage);
+        setDetailedError(responseData.details);
+        setIsLoading(false);
         return;
       }
 
-      if (!data.data || data.data.length === 0) {
-        setError("Aucune donnée valide n'a été trouvée dans la feuille. Vérifiez le format des données.");
+      if (!responseData.data || responseData.data.length === 0) {
+        setError("Aucune donnée valide n'a été trouvée dans la feuille. Vérifiez que la feuille contient des données et que la première ligne comporte des en-têtes.");
+        setIsLoading(false);
         return;
       }
 
-      console.log('Données importées:', data.data);
+      console.log('Données importées:', responseData.data);
       
-      onImportSuccess(data.data);
-      toast.success(`${data.data.length} campagnes importées avec succès`);
+      onImportSuccess(responseData.data);
+      toast.success(`${responseData.data.length} campagnes importées avec succès`);
       setSpreadsheetUrl('');
       
     } catch (error) {
@@ -166,8 +189,18 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
           <li>Vérifiez que votre feuille est bien partagée avec "Toute personne avec le lien peut voir"</li>
           <li>Le nom de la feuille DOIT être "Sheet1" (vérifiez l'onglet en bas de votre feuille)</li>
-          <li>Assurez-vous que la clé API Google Sheets est correctement configurée</li>
+          <li>Assurez-vous que la clé API Google Sheets est correctement configurée dans Supabase</li>
           <li>La feuille doit contenir une ligne d'en-tête avec des noms comme: Levier Média, Nom Campagne, etc.</li>
+          <li>
+            <a 
+              href={spreadsheetUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center text-blue-600 hover:underline"
+            >
+              Ouvrir la feuille dans un nouvel onglet <ExternalLink className="h-3 w-3 ml-1" />
+            </a>
+          </li>
         </ul>
       </div>
     </div>
