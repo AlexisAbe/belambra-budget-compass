@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
@@ -70,8 +69,13 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
         weeklyActuals: campaign.weeklyActuals || {}
       }));
       
+      const updatedCampaigns = [...prevCampaigns, ...fullNewCampaigns];
+      
+      // Save to local storage
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      
       toast.success(`${fullNewCampaigns.length} nouvelles campagnes importées`);
-      return [...prevCampaigns, ...fullNewCampaigns];
+      return updatedCampaigns;
     });
     
     onClose();
@@ -127,8 +131,6 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       </div>
       
       <div className="space-y-4">
-        {/* Suppression du bloc GoogleSheetsImport */}
-
         <div className="border-t border-gray-200 my-4"></div>
 
         <Button

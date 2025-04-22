@@ -1,3 +1,4 @@
+
 import { Campaign } from "@/types";
 import { saveCampaign, deleteCampaign as deleteSupabaseCampaign, createCampaignVersion } from "@/lib/supabaseUtils";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
     
     const campaignWithBudgets: Campaign = {
       ...newCampaign,
-      id: "",
+      id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       status: 'ACTIVE',
       weeklyBudgets,
       weeklyActuals,
@@ -28,7 +29,11 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
     const success = await saveCampaign(campaignWithBudgets);
     
     if (success) {
-      setCampaigns(prev => [...prev, campaignWithBudgets]);
+      setCampaigns(prev => {
+        const updatedCampaigns = [...prev, campaignWithBudgets];
+        localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+        return updatedCampaigns;
+      });
       toast.success("Nouvelle campagne ajoutée");
     } else {
       toast.error("Erreur lors de l'ajout de la campagne");
@@ -59,11 +64,13 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
       const success = await saveCampaign(campaignToUpdate);
       
       if (success) {
-        setCampaigns(prev => 
-          prev.map(campaign => 
+        setCampaigns(prev => {
+          const updatedCampaigns = prev.map(campaign => 
             campaign.id === campaignToUpdate.id ? campaignToUpdate : campaign
-          )
-        );
+          );
+          localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+          return updatedCampaigns;
+        });
         toast.success("Campagne mise à jour");
       } else {
         toast.error("Erreur lors de la mise à jour de la campagne");
@@ -79,7 +86,11 @@ export const useCampaignMutations = (setCampaigns: React.Dispatch<React.SetState
       const success = await deleteSupabaseCampaign(id);
       
       if (success) {
-        setCampaigns(prev => prev.filter(campaign => campaign.id !== id));
+        setCampaigns(prev => {
+          const updatedCampaigns = prev.filter(campaign => campaign.id !== id);
+          localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+          return updatedCampaigns;
+        });
         toast.success("Campagne supprimée");
       } else {
         toast.error("Erreur lors de la suppression de la campagne");

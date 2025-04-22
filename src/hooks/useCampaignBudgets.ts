@@ -1,105 +1,89 @@
 
 import { Campaign } from "@/types";
-import { saveCampaign } from "@/lib/supabaseUtils";
-import { toast } from "sonner";
 
 export const useCampaignBudgets = (setCampaigns: React.Dispatch<React.SetStateAction<Campaign[]>>) => {
+  // Function to update weekly budgets
   const updateWeeklyBudget = (campaignId: string, week: string, amount: number) => {
-    setCampaigns(prev => 
-      prev.map(campaign => {
+    setCampaigns(prev => {
+      const updatedCampaigns = prev.map(campaign => {
         if (campaign.id === campaignId) {
-          const newBudgets = {
-            ...campaign.weeklyBudgets,
-            [week]: amount
-          };
-          
-          const newPercentages = { ...(campaign.weeklyBudgetPercentages || {}) };
-          if (campaign.totalBudget > 0) {
-            newPercentages[week] = (amount / campaign.totalBudget) * 100;
-          }
-          
-          const updatedCampaign = {
-            ...campaign,
-            weeklyBudgets: newBudgets,
-            weeklyBudgetPercentages: newPercentages
-          };
-          
-          const timer = setTimeout(() => {
-            saveCampaign(updatedCampaign).catch(err => 
-              console.error("Error saving budget update:", err)
-            );
-          }, 1000);
-          
+          // Create a shallow copy of the campaign
+          const updatedCampaign = { ...campaign };
+          // Create a shallow copy of the weeklyBudgets
+          updatedCampaign.weeklyBudgets = { ...updatedCampaign.weeklyBudgets };
+          // Update the specific week's budget
+          updatedCampaign.weeklyBudgets[week] = amount;
           return updatedCampaign;
         }
         return campaign;
-      })
-    );
+      });
+      
+      // Save to local storage
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      
+      return updatedCampaigns;
+    });
   };
 
+  // Function to update weekly actuals
   const updateWeeklyActual = (campaignId: string, week: string, amount: number) => {
-    setCampaigns(prev => 
-      prev.map(campaign => {
+    setCampaigns(prev => {
+      const updatedCampaigns = prev.map(campaign => {
         if (campaign.id === campaignId) {
-          const updatedCampaign = {
-            ...campaign,
-            weeklyActuals: {
-              ...campaign.weeklyActuals,
-              [week]: amount
-            }
-          };
-          
-          const timer = setTimeout(() => {
-            saveCampaign(updatedCampaign).catch(err => 
-              console.error("Error saving actual update:", err)
-            );
-          }, 1000);
-          
+          // Create a shallow copy of the campaign
+          const updatedCampaign = { ...campaign };
+          // Create a shallow copy of the weeklyActuals
+          updatedCampaign.weeklyActuals = { ...updatedCampaign.weeklyActuals };
+          // Update the specific week's actual spend
+          updatedCampaign.weeklyActuals[week] = amount;
           return updatedCampaign;
         }
         return campaign;
-      })
-    );
+      });
+      
+      // Save to local storage
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      
+      return updatedCampaigns;
+    });
   };
 
+  // Function to update weekly budget percentage
   const updateWeeklyPercentage = (campaignId: string, week: string, percentage: number) => {
-    setCampaigns(prev => 
-      prev.map(campaign => {
+    setCampaigns(prev => {
+      const updatedCampaigns = prev.map(campaign => {
         if (campaign.id === campaignId) {
-          const otherWeeksTotal = Object.entries(campaign.weeklyBudgetPercentages || {})
-            .filter(([weekKey]) => weekKey !== week)
-            .reduce((sum, [, val]) => sum + val, 0);
+          // Create a shallow copy of the campaign
+          const updatedCampaign = { ...campaign };
           
-          if (otherWeeksTotal + percentage > 100) {
-            toast.error("Le total des pourcentages ne peut pas dépasser 100%");
-            return campaign;
+          // Make sure weeklyBudgetPercentages exists
+          if (!updatedCampaign.weeklyBudgetPercentages) {
+            updatedCampaign.weeklyBudgetPercentages = {};
+          } else {
+            // Create a shallow copy of the weeklyBudgetPercentages
+            updatedCampaign.weeklyBudgetPercentages = { ...updatedCampaign.weeklyBudgetPercentages };
           }
           
-          const newPercentages = {
-            ...(campaign.weeklyBudgetPercentages || {}),
-            [week]: percentage
-          };
+          // Update the specific week's percentage
+          updatedCampaign.weeklyBudgetPercentages[week] = percentage;
           
-          const newBudgets = { ...campaign.weeklyBudgets };
-          newBudgets[week] = (percentage / 100) * campaign.totalBudget;
+          // Calculate the corresponding budget amount based on percentage
+          const budgetAmount = (percentage / 100) * updatedCampaign.totalBudget;
           
-          const updatedCampaign = {
-            ...campaign,
-            weeklyBudgetPercentages: newPercentages,
-            weeklyBudgets: newBudgets
-          };
-          
-          const timer = setTimeout(() => {
-            saveCampaign(updatedCampaign).catch(err => 
-              console.error("Error saving percentage update:", err)
-            );
-          }, 1000);
+          // Update the weekly budget amount
+          updatedCampaign.weeklyBudgets = { ...updatedCampaign.weeklyBudgets };
+          updatedCampaign.weeklyBudgets[week] = budgetAmount;
           
           return updatedCampaign;
         }
         return campaign;
-      })
-    );
+      });
+      
+      // Save to local storage
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      
+      return updatedCampaigns;
+    });
   };
 
   return {
