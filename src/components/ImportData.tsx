@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileUp, X, Download } from "lucide-react";
-import { validateImportFile, processImportFile } from "@/lib/importUtils";
+import { validateImportFile, processImportFile } from "@/lib/import/importHandler";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
