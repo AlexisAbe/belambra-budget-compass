@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Campaign, mediaChannels } from "@/types";
@@ -5,9 +6,10 @@ import { weeks } from "@/services/mockData";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
-import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent } from "lucide-react";
+import { FileUp, PlusCircle, Trash2, Check, Pause, X, Filter, Percent, history } from "lucide-react";
 import CampaignForm from "./CampaignForm";
 import ImportData from "./ImportData";
+import CampaignVersions from "./CampaignVersions";
 import { toast } from "sonner";
 
 const CampaignTable = () => {
@@ -20,6 +22,7 @@ const CampaignTable = () => {
   const [displayMode, setDisplayMode] = useState<'amount' | 'percentage'>('amount');
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [editingBudgetValue, setEditingBudgetValue] = useState("");
+  const [selectedVersionCampaignId, setSelectedVersionCampaignId] = useState<string | null>(null);
 
   const handleCellClick = (campaignId: string, week: string, type: 'planned' | 'actual' | 'percentage', currentValue: number) => {
     setEditingCell({ campaignId, week, type });
@@ -122,6 +125,10 @@ const CampaignTable = () => {
     setDisplayMode(prev => prev === 'amount' ? 'percentage' : 'amount');
   };
 
+  const handleOpenVersions = (campaignId: string) => {
+    setSelectedVersionCampaignId(campaignId);
+  };
+
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-4">
@@ -185,6 +192,16 @@ const CampaignTable = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
           <ImportData onClose={() => setShowImportForm(false)} />
         </div>
+      )}
+
+      {selectedVersionCampaignId && (
+        <CampaignVersions 
+          campaignId={selectedVersionCampaignId}
+          open={!!selectedVersionCampaignId}
+          onOpenChange={(open) => {
+            if (!open) setSelectedVersionCampaignId(null);
+          }}
+        />
       )}
 
       <div className="table-container">
@@ -284,14 +301,26 @@ const CampaignTable = () => {
                       </Select>
                     </td>
                     <td className="fixed-cell border-r left-[930px] bg-gray-100">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(campaign.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenVersions(campaign.id)}
+                          className="text-gray-600 hover:text-gray-900"
+                          title="Historique des versions"
+                        >
+                          <history className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(campaign.id)}
+                          className="text-red-500 hover:text-red-700"
+                          title="Supprimer la campagne"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                     
                     {weeks.map(week => {
