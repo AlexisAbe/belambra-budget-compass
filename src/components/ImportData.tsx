@@ -8,7 +8,7 @@ import { validateImportFile } from "@/lib/import/validateImport";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
-import { GoogleSheetsImport } from "@/components/GoogleSheetsImport";
+import GoogleSheetsImport from "@/components/GoogleSheetsImport";
 
 type ImportDataProps = {
   onClose: () => void;
