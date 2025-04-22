@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,24 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           return prevCampaigns;
         }
         
-        toast.success(`${newCampaigns.length} nouvelles campagnes importées`);
-        return [...prevCampaigns, ...newCampaigns];
+        // Ensure all campaigns have the required fields
+        const fullNewCampaigns: Campaign[] = newCampaigns.map(campaign => ({
+          id: campaign.id || `imported-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          mediaChannel: campaign.mediaChannel || "OTHER",
+          campaignName: campaign.campaignName || `Campagne importée ${Date.now()}`,
+          marketingObjective: campaign.marketingObjective || "OTHER",
+          targetAudience: campaign.targetAudience || "Audience générale",
+          startDate: campaign.startDate || new Date().toISOString().substring(0, 10),
+          totalBudget: campaign.totalBudget || 0,
+          durationDays: campaign.durationDays || 30,
+          status: campaign.status || "ACTIVE",
+          weeklyBudgetPercentages: campaign.weeklyBudgetPercentages || {},
+          weeklyBudgets: campaign.weeklyBudgets || {},
+          weeklyActuals: campaign.weeklyActuals || {}
+        }));
+        
+        toast.success(`${fullNewCampaigns.length} nouvelles campagnes importées`);
+        return [...prevCampaigns, ...fullNewCampaigns];
       });
       
       onClose();
