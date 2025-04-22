@@ -1,14 +1,14 @@
-
 import React, { useState } from "react";
 import { useCampaigns } from "@/context/CampaignContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileUp, X, Download } from "lucide-react";
 import { processImportFile } from "@/lib/import/importHandler";
-import { validateImportFile } from "@/lib/import/validateImport"; // Updated import path
+import { validateImportFile } from "@/lib/import/validateImport";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
 import { Campaign } from "@/types";
+import { GoogleSheetsImport } from "@/components/GoogleSheetsImport";
 
 type ImportDataProps = {
   onClose: () => void;
@@ -43,7 +43,6 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
           return prevCampaigns;
         }
         
-        // S'assurer que toutes les campagnes ont les champs requis
         const fullNewCampaigns: Campaign[] = newCampaigns.map(campaign => ({
           id: campaign.id || `imported-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           mediaChannel: campaign.mediaChannel || "OTHER",
@@ -113,6 +112,33 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
       </div>
       
       <div className="space-y-4">
+        <GoogleSheetsImport onImportSuccess={(data) => {
+          if (data && data.length > 0) {
+            setCampaigns(prevCampaigns => {
+              const existingCampaignNames = new Set(
+                prevCampaigns.map(c => `${c.mediaChannel}-${c.campaignName}`.toLowerCase())
+              );
+              
+              const newCampaigns = data.filter(
+                campaign => !existingCampaignNames.has(
+                  `${campaign.mediaChannel}-${campaign.campaignName}`.toLowerCase()
+                )
+              );
+
+              if (newCampaigns.length === 0) {
+                toast.warning("Toutes les campagnes du fichier existent déjà");
+                return prevCampaigns;
+              }
+
+              toast.success(`${newCampaigns.length} nouvelles campagnes importées`);
+              return [...prevCampaigns, ...newCampaigns];
+            });
+            onClose();
+          }
+        }} />
+
+        <div className="border-t border-gray-200 my-4"></div>
+
         <div 
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             isDragging ? 'border-belambra-blue bg-belambra-blue/10' : 'border-gray-300'
