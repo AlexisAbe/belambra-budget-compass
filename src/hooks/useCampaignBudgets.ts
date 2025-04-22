@@ -1,6 +1,7 @@
 
 import { Campaign } from "@/types";
 import { saveCampaign } from "@/lib/supabaseUtils";
+import { toast } from "sonner";
 
 export const useCampaignBudgets = (setCampaigns: React.Dispatch<React.SetStateAction<Campaign[]>>) => {
   const updateWeeklyBudget = (campaignId: string, week: string, amount: number) => {
