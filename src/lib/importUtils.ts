@@ -30,6 +30,8 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
   const rows = csvData.split('\n');
   const headers = rows[0].split(',').map(header => header.trim());
   
+  console.log("CSV Headers:", headers);
+  
   // Find indices for required columns - check for various possible header names
   const findColumnIndex = (possibleNames: string[]): number => {
     for (const name of possibleNames) {
@@ -62,14 +64,22 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
   // Find week columns (S1, S2, etc.)
   const weekIndices: Record<string, number> = {};
   for (let i = 0; i < headers.length; i++) {
-    const header = headers[i].toLowerCase();
-    // Check for various week formatting: S1, S1 (%), S01, etc.
-    const match = header.match(/^s\s*(\d+)(?:\s*\(%\))?$/i);
-    if (match) {
-      const weekNum = parseInt(match[1]);
+    const header = headers[i].toLowerCase().trim();
+    
+    // Check for various week formatting: S1, S01, S1 (%), Semaine 1, etc.
+    let weekMatch = header.match(/^s\s*(\d+)(?:\s*\(%\))?$/i);
+    if (!weekMatch) {
+      weekMatch = header.match(/^s(?:emaine)?\s*(\d+)(?:\s*\(%\))?$/i);
+    }
+    if (!weekMatch) {
+      weekMatch = header.match(/^w(?:eek)?\s*(\d+)(?:\s*\(%\))?$/i);
+    }
+    
+    if (weekMatch) {
+      const weekNum = parseInt(weekMatch[1]);
       const weekKey = `S${weekNum}`;
       weekIndices[weekKey] = i;
-      console.log(`Found week column: ${header} at index ${i}, mapped to key ${weekKey}`);
+      console.log(`Found week column: ${headers[i]} at index ${i}, mapped to key ${weekKey}`);
     }
   }
   
@@ -96,28 +106,42 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
     // Extract total budget
     const totalBudgetRaw = totalBudgetIndex >= 0 ? columns[totalBudgetIndex] : "0";
     // Clean the budget value (remove currency symbols, spaces, etc.)
-    const totalBudget = parseFloat(totalBudgetRaw.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    let cleanBudget = totalBudgetRaw.replace(/[^\d.,]/g, '').replace(',', '.');
+    const totalBudget = parseFloat(cleanBudget) || 0;
+    
+    console.log(`Row ${i} total budget raw: "${totalBudgetRaw}", cleaned: "${cleanBudget}", parsed: ${totalBudget}`);
     
     // Get weekly percentage values
     Object.entries(weekIndices).forEach(([week, index]) => {
-      if (index < columns.length && columns[index]) {
+      if (index < columns.length) {
         // Extract percentage (remove % sign if present)
-        const percentValue = parseFloat(
-          columns[index].replace(/[%\s]/g, '').replace(',', '.')
-        ) || 0;
+        let percentValue = columns[index].replace(/[%\s]/g, '').replace(',', '.');
+        if (percentValue === "") percentValue = "0";
         
-        weeklyBudgetPercentages[week] = percentValue;
+        const percentage = parseFloat(percentValue) || 0;
+        
+        weeklyBudgetPercentages[week] = percentage;
         
         // Calculate absolute budget value based on percentage
-        weeklyBudgets[week] = (percentValue / 100) * totalBudget;
+        const weeklyBudget = (percentage / 100) * totalBudget;
+        weeklyBudgets[week] = weeklyBudget;
         
-        console.log(`Week ${week}: ${percentValue}% of ${totalBudget} = ${weeklyBudgets[week]}`);
+        console.log(`Row ${i}, Week ${week}: ${percentage}% of ${totalBudget} = ${weeklyBudget}`);
       } else {
         weeklyBudgetPercentages[week] = 0;
         weeklyBudgets[week] = 0;
       }
       weeklyActuals[week] = 0; // Initialize actuals as 0
     });
+    
+    // If no week data was found, initialize with zeros for all weeks
+    if (Object.keys(weeklyBudgetPercentages).length === 0) {
+      weeks.forEach(week => {
+        weeklyBudgetPercentages[week] = 0;
+        weeklyBudgets[week] = 0;
+        weeklyActuals[week] = 0;
+      });
+    }
     
     // Format date to YYYY-MM-DD
     let startDate = "2025-01-01";
@@ -130,9 +154,9 @@ export function parseCSVData(csvData: string): Partial<Campaign>[] {
           startDate = dateStr;
         }
         // Check if it's in DD/MM/YYYY or DD-MM-YYYY format
-        else if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateStr)) {
-          const parts = dateStr.split(/[\/\-]/);
-          startDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        else if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}$/.test(dateStr)) {
+          const parts = dateStr.split(/[\/\-\.]/);
+          startDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
         // Try as standard date
         else {

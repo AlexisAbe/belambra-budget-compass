@@ -7,7 +7,6 @@ import { FileUp, X, Download } from "lucide-react";
 import { validateImportFile, processImportFile } from "@/lib/importUtils";
 import { downloadTemplate } from "@/lib/templateUtils";
 import { toast } from "sonner";
-import Papa from "papaparse";
 import { Campaign } from "@/types";
 
 type ImportDataProps = {
@@ -19,160 +18,13 @@ const ImportData: React.FC<ImportDataProps> = ({ onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   
-  const processCSV = (file: File) => {
-    return new Promise<Partial<Campaign>[]>((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header) => {
-          return header.trim().replace(/\s+/g, '_').toLowerCase();
-        },
-        complete: (results) => {
-          console.log("CSV Parse Results:", results);
-          
-          if (results.errors && results.errors.length > 0) {
-            console.error("CSV Parse Errors:", results.errors);
-            reject(new Error(`Erreur d'analyse CSV: ${results.errors[0].message}`));
-            return;
-          }
-          
-          try {
-            const campaigns: Partial<Campaign>[] = results.data.map((row: any, index: number) => {
-              console.log(`Processing row ${index}:`, row);
-              
-              const mediaChannel = row.levier_media || row.media_channel || row.levier_média || "OTHER";
-              const campaignName = row.nom_campagne || row.campaign_name || `Campagne importée ${index + 1}`;
-              const marketingObjective = row.objectif_marketing || row.marketing_objective || "OTHER";
-              const targetAudience = row.cible_audience || row.cible || row.audience || row.target_audience || "Audience générale";
-              const startDate = formatDate(row.date_début || row.date_debut || row.start_date || "2025-01-01");
-              
-              // Clean the budget value
-              let totalBudgetRaw = row.budget_total || row.total_budget || "0";
-              if (typeof totalBudgetRaw === 'string') {
-                totalBudgetRaw = totalBudgetRaw.replace(/[^\d.,]/g, '').replace(',', '.');
-              }
-              const totalBudget = parseFloat(totalBudgetRaw) || 0;
-              
-              const durationDays = parseInt(row.durée_jours || row.duree_jours || row.duration_days || row.duration || "30") || 30;
-              
-              const weeklyBudgets: Record<string, number> = {};
-              const weeklyActuals: Record<string, number> = {};
-              const weeklyBudgetPercentages: Record<string, number> = {};
-              
-              // Find week columns and process percentages
-              Object.keys(row).forEach(key => {
-                // Look for various week formats (s1, s01, semaine1, etc.)
-                const weekMatch = key.match(/^(?:s|semaine|week)[-_\s]*(\d+)(?:\s*\(?%\)?)?$/i);
-                if (weekMatch) {
-                  const weekNum = parseInt(weekMatch[1]);
-                  const weekKey = `S${weekNum}`;
-                  
-                  // Handle percentage value - clean it up
-                  let percentageValue = row[key];
-                  if (typeof percentageValue === 'string') {
-                    percentageValue = percentageValue.replace(/[^\d.,]/g, '').replace(',', '.');
-                  }
-                  const percentage = parseFloat(percentageValue) || 0;
-                  
-                  weeklyBudgetPercentages[weekKey] = percentage;
-                  
-                  // Calculate the weekly budget amount based on percentage
-                  const budgetAmount = (percentage / 100) * totalBudget;
-                  weeklyBudgets[weekKey] = budgetAmount;
-                  
-                  console.log(`Week ${weekKey}: ${percentage}% of ${totalBudget} = ${budgetAmount}`);
-                  
-                  weeklyActuals[weekKey] = 0; // Initialize actual value
-                }
-              });
-              
-              // If no week data was found, initialize with zeros for all weeks
-              if (Object.keys(weeklyBudgetPercentages).length === 0) {
-                for (let i = 1; i <= 52; i++) {
-                  const weekKey = `S${i}`;
-                  weeklyBudgetPercentages[weekKey] = 0;
-                  weeklyBudgets[weekKey] = 0;
-                  weeklyActuals[weekKey] = 0;
-                }
-              }
-              
-              const campaign: Partial<Campaign> = {
-                id: `imported-${Date.now()}-${Math.random()}`,
-                mediaChannel,
-                campaignName,
-                marketingObjective,
-                targetAudience,
-                startDate,
-                totalBudget,
-                durationDays,
-                status: "ACTIVE" as const,
-                weeklyBudgetPercentages,
-                weeklyBudgets,
-                weeklyActuals
-              };
-              
-              console.log("Created campaign:", campaign.campaignName);
-              console.log("Weekly budget percentages:", campaign.weeklyBudgetPercentages);
-              console.log("Weekly budgets:", campaign.weeklyBudgets);
-              
-              return campaign;
-            });
-            
-            console.log("Processed campaigns:", campaigns);
-            resolve(campaigns);
-          } catch (error) {
-            console.error("Error processing campaigns:", error);
-            reject(error);
-          }
-        },
-        error: (error) => {
-          console.error("CSV parsing error:", error);
-          reject(error);
-        }
-      });
-    });
-  };
-  
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return "2025-01-01";
-    
-    try {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return dateString;
-      }
-      
-      if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(dateString)) {
-        const parts = dateString.split(/[\/\-]/);
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-      
-      const date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-      }
-    } catch (e) {
-      console.error("Date parsing error:", e);
-    }
-    
-    return "2025-01-01";
-  };
-  
   const handleImport = async (file: File) => {
     if (!validateImportFile(file)) return;
     
     setIsUploading(true);
     
     try {
-      let importedCampaigns;
-      
-      if (file.name.endsWith('.csv')) {
-        importedCampaigns = await processCSV(file);
-      } else if (file.name.endsWith('.json')) {
-        const fileContent = await file.text();
-        importedCampaigns = JSON.parse(fileContent);
-      } else {
-        throw new Error("Format de fichier non supporté");
-      }
+      let importedCampaigns = await processImportFile(file);
       
       if (!importedCampaigns || importedCampaigns.length === 0) {
         toast.error("Aucune campagne trouvée dans le fichier importé");
