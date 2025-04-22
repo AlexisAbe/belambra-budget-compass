@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, AlertCircle } from "lucide-react";
 
 interface GoogleSheetsImportProps {
   onImportSuccess: (data: any[]) => void;
@@ -61,18 +61,24 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         return;
       }
 
-      if (!data || !data.data) {
+      if (!data) {
         setError("Aucune donnée n'a été retournée. Vérifiez que votre feuille est accessible et qu'elle contient des données.");
+        return;
+      }
+
+      if (data.error) {
+        console.error('API error:', data.error);
+        setError(data.error);
+        return;
+      }
+
+      if (!data.data || data.data.length === 0) {
+        setError("Aucune donnée valide n'a été trouvée dans la feuille. Vérifiez le format des données.");
         return;
       }
 
       console.log('Imported data:', data.data);
       
-      if (data.data.length === 0) {
-        setError("Aucune donnée valide n'a été trouvée dans la feuille. Vérifiez le format des données.");
-        return;
-      }
-
       onImportSuccess(data.data);
       toast.success(`${data.data.length} campagnes importées avec succès`);
       setSpreadsheetUrl('');
@@ -93,16 +99,17 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
         <Info className="h-4 w-4" />
         <AlertTitle>Instructions</AlertTitle>
         <AlertDescription className="text-sm">
-          <p>1. Assurez-vous que votre Google Sheet est accessible avec le paramètre "Toute personne avec le lien peut voir".</p>
+          <p>1. <strong>Partagez</strong> votre Google Sheet avec le paramètre "Toute personne avec le lien peut voir".</p>
           <p>2. Votre feuille doit contenir une ligne d'en-tête avec les noms des colonnes (ex: Levier Média, Nom Campagne, etc.)</p>
           <p>3. Par défaut, nous utilisons la feuille "Sheet1". Contactez-nous si vous utilisez un nom différent.</p>
+          <p>4. Collez l'URL complète du Google Sheet ci-dessous.</p>
         </AlertDescription>
       </Alert>
       
       <div className="flex gap-2">
         <Input
           type="text"
-          placeholder="URL du Google Sheet"
+          placeholder="URL du Google Sheet (ex: https://docs.google.com/spreadsheets/d/...)"
           value={spreadsheetUrl}
           onChange={(e) => setSpreadsheetUrl(e.target.value)}
           className="flex-1"
@@ -117,6 +124,7 @@ const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onImportSuccess
       
       {error && (
         <Alert variant="destructive" className="mt-2">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erreur d'importation</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>

@@ -24,28 +24,72 @@ serve(async (req: Request) => {
       throw new Error('Spreadsheet ID and range are required');
     }
 
-    if (!SHEETS_API_KEY) {
-      throw new Error('Google Sheets API Key is not configured');
+    // Vérification plus stricte de la clé API
+    if (!SHEETS_API_KEY || SHEETS_API_KEY.trim() === '') {
+      console.error('Google Sheets API Key is missing or empty');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Configuration error: Google Sheets API Key is not configured correctly',
+          errorType: 'ConfigurationError'
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log(`Fetching data from spreadsheet: ${spreadsheetId}, range: ${range}`);
 
     // Make sure the sheet is accessible to "anyone with the link" or "public"
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${SHEETS_API_KEY}`;
-    console.log(`API URL: ${url}`);
+    console.log(`API URL: ${url.replace(SHEETS_API_KEY, 'API_KEY_HIDDEN')}`); // Masquer la clé dans les logs
 
     const response = await fetch(url);
-
+    const responseStatus = response.status;
+    const responseStatusText = response.statusText;
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Google Sheets API error: ${response.status} ${response.statusText}, Details: ${errorText}`);
-      throw new Error(`Google Sheets API error: Status ${response.status} - ${response.statusText}`);
+      console.error(`Google Sheets API error: ${responseStatus} ${responseStatusText}, Details: ${errorText}`);
+      
+      // Messages d'erreur personnalisés selon le code d'erreur
+      let userMessage = `Google Sheets API error: Status ${responseStatus} - ${responseStatusText}`;
+      
+      if (responseStatus === 403) {
+        userMessage = "Accès refusé au Google Sheet. Assurez-vous que le document est partagé avec 'Quiconque ayant le lien' peut le consulter.";
+      } else if (responseStatus === 404) {
+        userMessage = "Google Sheet introuvable. Vérifiez l'URL et assurez-vous que le document existe.";
+      } else if (responseStatus === 400 && errorText.includes("API_KEY_INVALID")) {
+        userMessage = "La clé API Google Sheets n'est pas valide. Veuillez contacter l'administrateur.";
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: userMessage,
+          errorType: 'APIError',
+          status: responseStatus
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     const data: SheetResponse = await response.json();
     
     if (!data.values || data.values.length === 0) {
-      throw new Error('No data found in the specified range');
+      return new Response(
+        JSON.stringify({ 
+          error: 'No data found in the specified range',
+          errorType: 'NoDataError'
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log(`Found ${data.values.length} rows of data (including header)`);
@@ -55,6 +99,19 @@ serve(async (req: Request) => {
     
     console.log('Headers:', headers);
     console.log(`Processing ${rows.length} data rows`);
+
+    if (rows.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Aucune donnée trouvée dans la feuille (seulement des en-têtes)',
+          errorType: 'EmptyDataError'
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     const processedData = rows.map((row, index) => {
       const campaign: Record<string, any> = {
